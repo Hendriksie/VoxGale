@@ -41,9 +41,22 @@ dependencies:
   dio: ^5.11.1
   flutter_secure_storage: ^11.2.0
   drift: ^2.35.2
+  # Flutter bindings for the Drift store chosen in Phase 0: opens the SQLite
+  # database in the app's documents directory with the platform glue.
+  drift_flutter: ^0.3.1
+  # Locates the app documents directory for session audio files (promoted
+  # from transitive — flutter_foreground_task already pulled it in).
+  path_provider: ^2.1.6
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Generates the Drift schema code (lib/storage/app_database.g.dart).
+  # 2.16.x is the newest line compatible with drift_dev 2.35.x's
+  # build (<5.0.0) constraint.
+  build_runner: ^2.16.2
+  # Drift's code generator (latest 2.35.x; drift itself is on 2.35.2).
+  drift_dev: ^2.35.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

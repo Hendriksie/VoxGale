@@ -2,9 +2,9 @@
 
 ## 1. Storage layer (Drift schema + session repository)
 
-- [ ] 1.1 Add dependencies — `drift_flutter` (main), `build_runner` + `drift_dev` (dev), `path_provider` promoted to direct main — with the one-line justifications recorded in proposal.md; verify `flutter pub get` succeeds
-- [ ] 1.2 Define the Drift schema in `lib/storage/app_database.dart` (`sessions` + `segments` tables per design P1-D4) and generate the database code; verify `flutter analyze` reports zero issues on the storage code
-- [ ] 1.3 Implement `SessionRepository` (interface + Drift implementation): save a finalized session with its segments, load by id, replace the transcript after the diarization pass, delete a session and its audio path; verify repository unit tests against an in-memory Drift database pass
+- [x] 1.1 Add dependencies — `drift_flutter` (main), `build_runner` + `drift_dev` (dev), `path_provider` promoted to direct main — with the one-line justifications recorded in proposal.md; verify `flutter pub get` succeeds
+- [x] 1.2 Define the Drift schema in `lib/storage/app_database.dart` (`sessions` + `segments` tables per design P1-D4) and generate the database code; verify `flutter analyze` reports zero issues on the storage code
+- [x] 1.3 Implement `SessionRepository` (interface + Drift implementation): save a finalized session with its segments, load by id, replace the transcript after the diarization pass, delete a session and its audio path; verify repository unit tests against an in-memory Drift database pass
 
 ## 2. Mistral client hardening (bounded reconnect buffer)
 
