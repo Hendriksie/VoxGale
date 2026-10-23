@@ -19,10 +19,10 @@
 
 ## 4. Live session controller + post-session pass
 
-- [ ] 4.1 Implement `LiveSessionController` (Riverpod notifier): the state machine idle → starting → active ⇄ paused → stopping → finalizing → pass-offered → pass-running → done / pass-failed; turn grouping from the event stream (`TextDelta`/`SpeakerSegment` accumulate into the current turn, `TurnStarted`/`TurnEnded` close blocks); verify controller unit tests with a mocked capture service + repository pass
-- [ ] 4.2 Implement pause/resume end-to-end (controller → service → recorder) and the paused state in the UI model; verify a controller unit test pauses and resumes and asserts no transcript text is produced while paused
-- [ ] 4.3 Implement `diarization_pass.dart` — offer with estimated cost (audio duration × configured batch Mini rate), run/skip/retry, replace the provisional transcript with the labelled segments, persist the update, delete the audio after success, preserve the provisional transcript with an error state on failure; verify unit tests with the batch client mocked (never the live API)
-- [ ] 4.4 Wire finalization: graceful stop → save session + segments + audio path via the repository; verify a controller unit test finalizes a session and asserts the saved record fields (text, labels, timestamps, duration, date, billed usage)
+- [x] 4.1 Implement `LiveSessionController` (Riverpod notifier): the state machine idle → starting → active ⇄ paused → stopping → finalizing → pass-offered → pass-running → done / pass-failed; turn grouping from the event stream (`TextDelta`/`SpeakerSegment` accumulate into the current turn, `TurnStarted`/`TurnEnded` close blocks); verify controller unit tests with a mocked capture service + repository pass
+- [x] 4.2 Implement pause/resume end-to-end (controller → service → recorder) and the paused state in the UI model; verify a controller unit test pauses and resumes and asserts no transcript text is produced while paused
+- [x] 4.3 Implement `diarization_pass.dart` — offer with estimated cost (audio duration × configured batch Mini rate), run/skip/retry, replace the provisional transcript with the labelled segments, persist the update, delete the audio after success, preserve the provisional transcript with an error state on failure; verify unit tests with the batch client mocked (never the live API)
+- [x] 4.4 Wire finalization: graceful stop → save session + segments + audio path via the repository; verify a controller unit test finalizes a session and asserts the saved record fields (text, labels, timestamps, duration, date, billed usage)
 
 ## 5. Live session UI
 
