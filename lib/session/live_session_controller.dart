@@ -128,6 +128,7 @@ class LiveSessionState {
   const LiveSessionState({
     this.phase = LiveSessionPhase.idle,
     this.turns = const [],
+    this.gapMarkers = const [],
     this.elapsedSeconds = 0,
     this.estimatedCost = 0,
     this.sessionId,
@@ -151,6 +152,12 @@ class LiveSessionState {
   /// The turn-grouped transcript. Provisional (streaming) until the
   /// post-session diarization pass replaces it with labelled turns.
   final List<TranscriptTurn> turns;
+
+  /// Visible gap markers where buffered audio was dropped (the reconnect
+  /// buffer's cap was exceeded), rendered at the position of each drop
+  /// (live-transcription spec). Cleared when the pass replaces the
+  /// provisional transcript.
+  final List<TranscriptGap> gapMarkers;
 
   /// Elapsed wall-clock seconds since the session started. Keeps counting
   /// while paused (the notification shows the same elapsed time).
@@ -214,6 +221,7 @@ class LiveSessionState {
   LiveSessionState copyWith({
     LiveSessionPhase? phase,
     List<TranscriptTurn>? turns,
+    List<TranscriptGap>? gapMarkers,
     int? elapsedSeconds,
     double? estimatedCost,
     String? sessionId,
@@ -233,6 +241,7 @@ class LiveSessionState {
       LiveSessionState(
         phase: phase ?? this.phase,
         turns: turns ?? this.turns,
+        gapMarkers: gapMarkers ?? this.gapMarkers,
         elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
         estimatedCost: estimatedCost ?? this.estimatedCost,
         sessionId: sessionId ?? this.sessionId,
@@ -271,11 +280,22 @@ class LiveSessionState {
           missingApiKey == other.missingApiKey &&
           batteryPromptNeeded == other.batteryPromptNeeded &&
           turns.length == other.turns.length &&
-          _turnsEqual(other);
+          _turnsEqual(other) &&
+          gapMarkers.length == other.gapMarkers.length &&
+          _gapMarkersEqual(other);
 
   bool _turnsEqual(LiveSessionState other) {
     for (var i = 0; i < turns.length; i++) {
       if (turns[i] != other.turns[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _gapMarkersEqual(LiveSessionState other) {
+    for (var i = 0; i < gapMarkers.length; i++) {
+      if (gapMarkers[i] != other.gapMarkers[i]) {
         return false;
       }
     }
@@ -287,6 +307,8 @@ class LiveSessionState {
         phase,
         turns.length,
         Object.hashAll(turns),
+        gapMarkers.length,
+        Object.hashAll(gapMarkers),
         elapsedSeconds,
         estimatedCost,
         sessionId,
@@ -515,6 +537,9 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       state = state.copyWith(
         phase: LiveSessionPhase.done,
         turns: _finalTurns(result),
+        // The labelled transcript replaces the provisional one; the
+        // provisional stream's gap markers no longer apply to it.
+        gapMarkers: const [],
         passBilledSeconds: result.billedAudioSeconds,
         passActualCost: result.actualCost,
         language: result.language ?? state.language,
@@ -589,6 +614,9 @@ class LiveSessionController extends Notifier<LiveSessionState> {
           connection: state.connection.copyWith(lastReplayedSeconds: seconds),
         );
       case SessionBufferedAudioDropped(:final seconds):
+        // The transcript shows a visible gap marker at the drop position
+        // (live-transcription spec); the status row carries the totals.
+        _recordGap(seconds);
         state = state.copyWith(
           connection: state.connection.copyWith(lastDroppedSeconds: seconds),
         );
@@ -695,6 +723,25 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     if (turns.isNotEmpty && turns.last.text.isEmpty) {
       state = state.copyWith(turns: List<TranscriptTurn>.of(turns)..removeLast());
     }
+  }
+
+  /// Records a transcript gap marker at the drop position: the currently open
+  /// turn is closed so the marker renders between the text transcribed
+  /// before and after the lost audio (live-transcription spec: "the
+  /// transcript SHALL show a visible gap marker at the point where audio was
+  /// lost").
+  void _recordGap(double seconds) {
+    if (seconds <= 0) {
+      return;
+    }
+    _closeTurn();
+    state = state.copyWith(
+      gapMarkers: List<TranscriptGap>.of(state.gapMarkers)
+        ..add(TranscriptGap(
+          afterTurnIndex: state.turns.length - 1,
+          droppedSeconds: seconds,
+        )),
+    );
   }
 
   /// The labelled turns that replace the provisional transcript after a

@@ -49,6 +49,35 @@ class TranscriptTurn {
   int get hashCode => Object.hash(speakerLabel, text, isProvisional);
 }
 
+/// A visible marker in the transcript where buffered audio was dropped (the
+/// reconnect buffer's cap was exceeded): rendered at the position of the
+/// drop, between the turns around it (live-transcription spec: "the
+/// transcript SHALL show a visible gap marker at the point where audio was
+/// lost").
+class TranscriptGap {
+  const TranscriptGap({
+    required this.afterTurnIndex,
+    required this.droppedSeconds,
+  });
+
+  /// The index of the turn after which the gap renders; negative when the
+  /// audio was lost before any turn existed (the marker renders at the top).
+  final int afterTurnIndex;
+
+  /// How many seconds of buffered audio were dropped.
+  final double droppedSeconds;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TranscriptGap &&
+          afterTurnIndex == other.afterTurnIndex &&
+          droppedSeconds == other.droppedSeconds;
+
+  @override
+  int get hashCode => Object.hash(afterTurnIndex, droppedSeconds);
+}
+
 /// Capture lifecycle of a live session (design P1-D7). The post-session pass
 /// states (pass-offered, pass-running, done, pass-failed) belong to the
 /// session controller (group 4), which extends this lifecycle.

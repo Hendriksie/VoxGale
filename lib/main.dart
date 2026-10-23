@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'app/home_screen.dart';
+import 'app/live_session_screen.dart';
 import 'app/theme.dart';
 
 void main() {
@@ -39,7 +39,10 @@ class VoxtralLiveApp extends StatelessWidget {
       theme: buildLightTheme(),
       darkTheme: buildDarkTheme(),
       themeMode: themeMode ?? ThemeMode.system,
-      home: const HomeScreen(),
+      // The live session screen is home (design P1-D6); the spike harness
+      // and the debug-only API key entry live behind the debug-only route
+      // opened from the live screen's app bar.
+      home: const LiveSessionScreen(),
     );
   }
 }

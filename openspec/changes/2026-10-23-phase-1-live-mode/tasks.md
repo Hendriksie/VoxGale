@@ -26,11 +26,11 @@
 
 ## 5. Live session UI
 
-- [ ] 5.1 Build `lib/app/live_session_screen.dart` + transcript widgets: turn-grouped transcript with provisional vs finalized styling, gap markers, subtle connection-status indicator (no spike debug markers), pulsing orange recording indicator, elapsed + estimated cost, actual usage after stop, error states (no key, no permission, API errors) with the key never displayed; verify widget tests cover turn grouping, the provisional/finalized distinction, and the gap marker
-- [ ] 5.2 Build the session controls: start/stop/pause/resume with correct enablement per state; verify widget tests cover the state-driven enablement
-- [ ] 5.3 Build the post-session pass offer UI: estimated cost, run/skip actions, pass progress, failure error + retry, actual pass usage; verify widget tests cover the offer/run/skip/failure states
-- [ ] 5.4 Build the battery-restriction prompt (shown when the app is not exempt, deep-linking to the system battery settings); verify a widget test covers shown/not-shown
-- [ ] 5.5 Replace the home screen: the live session screen becomes home; the spike links + debug API key entry move behind a debug-only route (design P1-D6); verify the existing widget test still passes and a new widget test covers the debug-route gating
+- [x] 5.1 Build `lib/app/live_session_screen.dart` + transcript widgets: turn-grouped transcript with provisional vs finalized styling, gap markers, subtle connection-status indicator (no spike debug markers), pulsing orange recording indicator, elapsed + estimated cost, actual usage after stop, error states (no key, no permission, API errors) with the key never displayed; verify widget tests cover turn grouping, the provisional/finalized distinction, and the gap marker
+- [x] 5.2 Build the session controls: start/stop/pause/resume with correct enablement per state; verify widget tests cover the state-driven enablement
+- [x] 5.3 Build the post-session pass offer UI: estimated cost, run/skip actions, pass progress, failure error + retry, actual pass usage; verify widget tests cover the offer/run/skip/failure states
+- [x] 5.4 Build the battery-restriction prompt (shown when the app is not exempt, deep-linking to the system battery settings); verify a widget test covers shown/not-shown
+- [x] 5.5 Replace the home screen: the live session screen becomes home; the spike links + debug API key entry move behind a debug-only route (design P1-D6); verify the existing widget test still passes and a new widget test covers the debug-route gating
 
 ## 6. Physical-device smoke tests (project rule: mic/foreground service — emulators lie about background capture)
 

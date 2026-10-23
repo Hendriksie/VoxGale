@@ -7,33 +7,38 @@ import '../spike/batch_spike_screen.dart';
 import '../spike/live_spike_screen.dart';
 import '../spike/spike_providers.dart';
 
-/// Minimal app shell for Phase 0. The real v1 home (live transcript view)
-/// arrives in Phase 1; for now this screen hosts the spike harness.
+/// The debug-only hub (design P1-D6, task 5.5): the Phase-0 spike harness
+/// and the debug-only API key entry, moved off the home screen (the live
+/// session screen is home now). Reachable only from the live screen's app
+/// bar debug action, which is shown only when `kDebugMode` (a const —
+/// release builds fold it out).
 ///
-/// The API key entry is DEBUG-ONLY: the real settings screen (with key
-/// validation) is a Phase 2 feature per the `settings` spec. The debug entry
-/// exists so the Phase-0 spikes can run before that screen exists. It never
-/// appears in release builds, and the key is only ever written to secure
-/// storage at runtime — never to source control, logs, or crash reports.
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+/// The harness stays because the deferred Spike C probes (API limits, speaker
+/// reference clips) still need it; removing it is a later change (with Phase
+/// 2 file mode). The API key entry is DEBUG-ONLY: the real settings screen
+/// (with key validation) is a Phase 2 feature. The key is only ever written
+/// to secure storage at runtime — never to source control, logs, or crash
+/// reports — and is never displayed (only saved/not-saved).
+class DebugHubScreen extends ConsumerWidget {
+  const DebugHubScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final keyAsync = ref.watch(apiKeyProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Voxtral Live')),
+      appBar: AppBar(title: const Text('Debug menu')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Phase 0 — spike harness',
+            'Phase 0 — spike harness (debug only)',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Text(
             'These screens prove the core paths against the live Mistral API '
-            'with your own key. They are throwaway; Phase 1 builds the real UI.',
+            'with your own key. They are kept for the deferred Spike C probes; '
+            'removal is a later change.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
