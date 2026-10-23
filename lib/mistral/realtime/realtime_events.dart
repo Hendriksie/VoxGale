@@ -85,6 +85,18 @@ final class BufferedAudioReplayed extends RealtimeEvent {
   final double seconds;
 }
 
+/// Buffered audio was dropped because the reconnect buffer exceeded its cap
+/// (design decision P1-D3): the oldest chunks beyond the cap are discarded so
+/// a long outage cannot grow the buffer without bound. The transcript shows a
+/// visible gap where the lost audio would have been transcribed;
+/// already-emitted text is never rewritten (deltas are append-only).
+final class BufferedAudioDropped extends RealtimeEvent {
+  const BufferedAudioDropped(this.seconds);
+
+  /// How many seconds of buffered audio were dropped.
+  final double seconds;
+}
+
 /// The session finished: the transcript of record.
 final class TranscriptionDone extends RealtimeEvent {
   const TranscriptionDone({

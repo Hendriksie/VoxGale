@@ -8,8 +8,8 @@
 
 ## 2. Mistral client hardening (bounded reconnect buffer)
 
-- [ ] 2.1 Cap the reconnect audio buffer in `web_socket_realtime_client.dart` (default 5 minutes, drop-oldest) and add the `BufferedAudioDropped` domain event; verify a unit test simulates a disconnect longer than the cap and asserts the oldest audio is dropped and the event fires
-- [ ] 2.2 Extend the realtime client tests for the dropped-audio event and keep the existing reconnect/replay/keep-alive tests green; verify the full `test/mistral/` suite passes with the layer mocked (never the live API)
+- [x] 2.1 Cap the reconnect audio buffer in `web_socket_realtime_client.dart` (default 5 minutes, drop-oldest) and add the `BufferedAudioDropped` domain event; verify a unit test simulates a disconnect longer than the cap and asserts the oldest audio is dropped and the event fires
+- [x] 2.2 Extend the realtime client tests for the dropped-audio event and keep the existing reconnect/replay/keep-alive tests green; verify the full `test/mistral/` suite passes with the layer mocked (never the live API)
 
 ## 3. Production capture service (foreground service, always-on)
 

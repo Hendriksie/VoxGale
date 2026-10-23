@@ -122,6 +122,14 @@ class SpikeTaskHandler extends TaskHandler {
           'type': 'status',
           'message': 'replayed ${seconds.toStringAsFixed(1)}s of buffered audio',
         };
+      case BufferedAudioDropped(:final seconds):
+        print('[spike-bg] dropped ${seconds.toStringAsFixed(1)}s '
+            'of buffered audio (cap reached)');
+        map = {
+          'type': 'status',
+          'message': 'dropped ${seconds.toStringAsFixed(1)}s of buffered audio '
+              '(cap reached)',
+        };
       case TranscriptionDone(:final usage, :final fullText):
         map = {
           'type': 'done',

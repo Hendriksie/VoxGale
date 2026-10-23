@@ -52,6 +52,7 @@ class WebSocketRealtimeClient implements RealtimeTranscriptionClient {
     WebSocketChannelFactory? channelFactory,
     this.reconnectDelay = const Duration(seconds: 1),
     this.keepAliveAfter = const Duration(milliseconds: 500),
+    this.bufferCap = const Duration(minutes: 5),
     this.debugLog,
   })  : _apiKey = apiKey,
         _uri = (baseUri ?? _defaultBaseUri).replace(
@@ -75,6 +76,14 @@ class WebSocketRealtimeClient implements RealtimeTranscriptionClient {
   /// stream may gap mid-speech on some devices). Null disables the feed.
   final Duration? keepAliveAfter;
 
+  /// Maximum audio buffered while disconnected, replayed after the reconnect.
+  /// Beyond the cap the OLDEST chunks are dropped and a [BufferedAudioDropped]
+  /// event is emitted (design decision P1-D3): the default 5 minutes of PCM16
+  /// mono at 16 kHz is 9,600,000 bytes, so a long outage cannot grow the buffer
+  /// without bound (the spike left it unbounded). Injectable so tests can use
+  /// a tiny cap.
+  final Duration bufferCap;
+
   /// Optional trace log for connection lifecycle (connect, stream error with
   /// close code, reconnect, replay). Used by the spike harness; never logged
   /// in production.
@@ -90,6 +99,7 @@ class WebSocketRealtimeClient implements RealtimeTranscriptionClient {
         channelFactory: _channelFactory,
         reconnectDelay: reconnectDelay,
         keepAliveAfter: keepAliveAfter,
+        bufferCap: bufferCap,
         debugLog: debugLog,
       );
     } catch (error) {
@@ -107,19 +117,24 @@ class WebSocketRealtimeSession implements RealtimeSession {
     required Uri uri,
     required WebSocketChannelFactory channelFactory,
     required Duration reconnectDelay,
+    required Duration bufferCap,
     this.keepAliveAfter,
     this.debugLog,
   })  : _config = config,
         _apiKey = apiKey,
         _uri = uri,
         _channelFactory = channelFactory,
-        _reconnectDelay = reconnectDelay;
+        _reconnectDelay = reconnectDelay,
+        _bufferCap = bufferCap;
 
   final RealtimeSessionConfig _config;
   final String _apiKey;
   final Uri _uri;
   final WebSocketChannelFactory _channelFactory;
   final Duration _reconnectDelay;
+
+  /// Maximum audio held in [_audioBuffer] (design decision P1-D3).
+  final Duration _bufferCap;
   final Duration? keepAliveAfter;
   final void Function(String message)? debugLog;
 
@@ -128,9 +143,14 @@ class WebSocketRealtimeSession implements RealtimeSession {
   final StreamController<RealtimeEvent> _events =
       StreamController<RealtimeEvent>.broadcast();
 
-  /// Audio captured while disconnected, replayed after the reconnect.
-  /// Unbounded by design for the spike; a production session should cap it.
+  /// Audio captured while disconnected, replayed after the reconnect. Capped
+  /// at [_bufferCap] of audio (design decision P1-D3); beyond the cap the
+  /// oldest chunks are dropped (see [_bufferAudio]).
   final List<Uint8List> _audioBuffer = [];
+
+  /// Total bytes currently in [_audioBuffer]; kept in sync so the cap check
+  /// and [bufferedAudioSeconds] stay O(1).
+  int _bufferedBytes = 0;
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _incoming;
@@ -153,6 +173,7 @@ class WebSocketRealtimeSession implements RealtimeSession {
     required Uri uri,
     required WebSocketChannelFactory channelFactory,
     required Duration reconnectDelay,
+    required Duration bufferCap,
     Duration? keepAliveAfter,
     void Function(String message)? debugLog,
   }) async {
@@ -162,6 +183,7 @@ class WebSocketRealtimeSession implements RealtimeSession {
       uri: uri,
       channelFactory: channelFactory,
       reconnectDelay: reconnectDelay,
+      bufferCap: bufferCap,
       keepAliveAfter: keepAliveAfter,
       debugLog: debugLog,
     );
@@ -370,15 +392,40 @@ class WebSocketRealtimeSession implements RealtimeSession {
     if (_connected && !_flushing) {
       _sendAudioChunk(pcmChunk);
     } else {
-      _audioBuffer.add(pcmChunk);
+      _bufferAudio(pcmChunk);
+    }
+  }
+
+  /// Buffers one chunk captured while disconnected. The buffer is capped at
+  /// [_bufferCap] of audio (design decision P1-D3): beyond the cap the OLDEST
+  /// chunks are dropped and a [BufferedAudioDropped] event is emitted, so a
+  /// long outage cannot grow the buffer without bound (the spike left it
+  /// unbounded). Already-emitted transcript text is never rewritten.
+  void _bufferAudio(Uint8List pcmChunk) {
+    _audioBuffer.add(pcmChunk);
+    _bufferedBytes += pcmChunk.length;
+    final bytesPerSecond = _config.sampleRate * 2; // 16-bit mono PCM
+    final maxBytes =
+        (_bufferCap.inMilliseconds * bytesPerSecond / 1000).round();
+    var droppedBytes = 0;
+    while (_bufferedBytes > maxBytes && _audioBuffer.isNotEmpty) {
+      final oldest = _audioBuffer.removeAt(0);
+      _bufferedBytes -= oldest.length;
+      droppedBytes += oldest.length;
+    }
+    if (droppedBytes > 0) {
+      final seconds = droppedBytes / bytesPerSecond;
+      _log('dropped ${seconds.toStringAsFixed(1)}s of buffered audio '
+          '(cap ${_bufferCap.inSeconds}s)');
+      _events.add(BufferedAudioDropped(seconds));
     }
   }
 
   @override
   double get bufferedAudioSeconds {
-    final bytes = _audioBuffer.fold<int>(0, (sum, c) => sum + c.length);
-    // 16-bit mono PCM: 2 bytes per sample.
-    return bytes / (_config.sampleRate * 2);
+    // 16-bit mono PCM: 2 bytes per sample. The gauge shrinks as old chunks
+    // are dropped beyond the cap.
+    return _bufferedBytes / (_config.sampleRate * 2);
   }
 
   void _sendAudioChunk(Uint8List pcmChunk) {
@@ -404,6 +451,7 @@ class WebSocketRealtimeSession implements RealtimeSession {
     try {
       while (_audioBuffer.isNotEmpty && !_ending && !_disposed) {
         final chunk = _audioBuffer.removeAt(0);
+        _bufferedBytes -= chunk.length;
         _sendAudioChunk(chunk);
         replayedBytes += chunk.length;
         final ms = (chunk.length / bytesPerSecond * 1000).round();

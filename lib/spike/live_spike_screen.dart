@@ -212,6 +212,12 @@ class _LiveSpikeScreenState extends ConsumerState<LiveSpikeScreen> {
               'of buffered audio');
           _runs.add(TranscriptRun.marker(
               '\n[replayed ${seconds.toStringAsFixed(1)}s of buffered audio]\n'));
+        case BufferedAudioDropped(:final seconds):
+          print('[spike] dropped ${seconds.toStringAsFixed(1)}s '
+              'of buffered audio (cap reached)');
+          _runs.add(TranscriptRun.marker(
+              '\n[dropped ${seconds.toStringAsFixed(1)}s of buffered audio '
+              '— gap]\n'));
         case TranscriptionDone(:final usage):
           _actualAudioSeconds = usage.promptAudioSeconds;
           if (usage.promptAudioSeconds != null) {

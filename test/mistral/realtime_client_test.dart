@@ -310,6 +310,109 @@ void main() {
     await incoming2.close();
   });
 
+  test('drops the oldest buffered audio beyond the cap and emits '
+      'BufferedAudioDropped', () async {
+    final incoming1 = StreamController<String>();
+    final incoming2 = StreamController<String>();
+    final sink1 = RecordingWebSocketSink();
+    final sink2 = RecordingWebSocketSink();
+    final channel1 = mockChannel(incoming1, sink1);
+    final channel2 = mockChannel(incoming2, sink2);
+
+    var call = 0;
+    final log = <String>[];
+    // Cap = 100 ms of audio = 3,200 bytes at 16 kHz PCM16 mono (32 KB/s), so
+    // the buffer holds two 1,600-byte (50 ms) chunks; the rest is dropped.
+    final client = WebSocketRealtimeClient(
+      apiKey: 'test-key',
+      config: MistralConfig.defaults,
+      keepAliveAfter: null,
+      reconnectDelay: const Duration(milliseconds: 10),
+      bufferCap: const Duration(milliseconds: 100),
+      channelFactory: (uri, headers) => [channel1, channel2][call++],
+      debugLog: log.add,
+    );
+
+    Uint8List chunk(int marker) {
+      final bytes = Uint8List(1600);
+      bytes[0] = marker;
+      return bytes;
+    }
+
+    final sessionFuture = client.startSession(RealtimeSessionConfig());
+    incoming1.add(jsonEncode({'type': 'session.created', 'session': {}}));
+    incoming1.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+    final session = await sessionFuture;
+
+    final events = <RealtimeEvent>[];
+    final sub = session.events.listen(events.add);
+
+    // The connection drops; the outage outlasts the buffer cap.
+    incoming1.addError(Exception('network down'));
+    await waitFor(() => events.whereType<RealtimeError>().isNotEmpty);
+
+    // Four 50 ms chunks arrive while disconnected; the cap holds two.
+    session.sendAudio(chunk(1));
+    session.sendAudio(chunk(2));
+    session.sendAudio(chunk(3));
+    session.sendAudio(chunk(4));
+    // The drop events are delivered on the broadcast stream asynchronously.
+    await pumpEventQueue();
+    expect(
+      sink1.jsonMessages().where((m) => m['type'] == 'input_audio.append'),
+      isEmpty,
+    );
+
+    // The oldest chunks (1, 2) were dropped: one event per drop, and the
+    // gauge reports only what is still buffered (2 chunks = 0.1 s).
+    final dropped = events.whereType<BufferedAudioDropped>().toList();
+    expect(dropped, hasLength(2));
+    expect(dropped[0].seconds, closeTo(0.05, 1e-9));
+    expect(dropped[1].seconds, closeTo(0.05, 1e-9));
+    expect(session.bufferedAudioSeconds, closeTo(0.1, 1e-9));
+    expect(
+      log.any((m) => m.contains('dropped') && m.contains('buffered audio')),
+      isTrue,
+    );
+
+    // The client reconnects; only the surviving chunks (3, 4) are replayed,
+    // oldest first — nothing is duplicated or reordered.
+    await waitFor(() => call == 2);
+    incoming2.add(jsonEncode({'type': 'session.created', 'session': {}}));
+    incoming2.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+    await waitFor(() => events.whereType<BufferedAudioReplayed>().isNotEmpty);
+
+    final appends = sink2
+        .jsonMessages()
+        .where((m) => m['type'] == 'input_audio.append')
+        .toList();
+    expect(appends, hasLength(2));
+    expect(base64Decode(appends[0]['audio'] as String)[0], 3);
+    expect(base64Decode(appends[1]['audio'] as String)[0], 4);
+    expect(
+      events.whereType<BufferedAudioReplayed>().single.seconds,
+      closeTo(0.1, 1e-9),
+    );
+    expect(events.whereType<Reconnected>(), hasLength(1));
+    expect(session.bufferedAudioSeconds, 0);
+
+    final doneFuture = session.end();
+    incoming2.add(jsonEncode({
+      'type': 'transcription.done',
+      'text': '',
+      'segments': [],
+      'language': 'en',
+      'model': 'voxtral-mini-transcribe-realtime-3-0',
+      'usage': {'prompt_audio_seconds': 1},
+    }));
+    await doneFuture;
+
+    await sub.cancel();
+    await session.dispose();
+    await incoming1.close();
+    await incoming2.close();
+  });
+
   test('oversized audio chunks are split into multiple messages', () async {
     final incoming = StreamController<String>();
     final sink = RecordingWebSocketSink();
