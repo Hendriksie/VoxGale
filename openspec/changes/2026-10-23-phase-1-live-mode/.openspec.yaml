@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-23
+goal: "Implement project-plan.md Phase 1 — live mode end-to-end: robust
+  WebSocket lifecycle, polished foreground service, production live transcript
+  UI with local session save, and the post-session diarization pass."
