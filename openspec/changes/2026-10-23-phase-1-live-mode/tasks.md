@@ -13,9 +13,9 @@
 
 ## 3. Production capture service (foreground service, always-on)
 
-- [ ] 3.1 Create `lib/session/capture_task_handler.dart` — the production `TaskHandler` promoted from `SpikeTaskHandler`: recorder + WAV written to the app documents dir (`sessions/<id>.wav`, moving `WavFileWriter` from `lib/spike/` to `lib/session/`), realtime session, pause/resume commands, graceful stop, guarded dispose paths; verify `flutter analyze` is clean and a unit test covers the command/event mapping with the Mistral layer mocked
-- [ ] 3.2 Create `lib/session/capture_service.dart` — the UI-side wrapper: RECORD_AUDIO + POST_NOTIFICATIONS permission checks, battery sanity check (`isIgnoringBatteryOptimizations` + prompt), service start with the polished notification (title, elapsed time via `updateService`, stop `NotificationButton`), command channel, event stream; verify a unit test covers the command/event mapping with the plugin mocked
-- [ ] 3.3 Add `lib/session/session_models.dart` — `TranscriptTurn`, `SessionState`, and the service-to-UI event serialization; verify a serialization round-trip unit test passes (event to JSON and back)
+- [x] 3.1 Create `lib/session/capture_task_handler.dart` — the production `TaskHandler` promoted from `SpikeTaskHandler`: recorder + WAV written to the app documents dir (`sessions/<id>.wav`, moving `WavFileWriter` from `lib/spike/` to `lib/session/`), realtime session, pause/resume commands, graceful stop, guarded dispose paths; verify `flutter analyze` is clean and a unit test covers the command/event mapping with the Mistral layer mocked
+- [x] 3.2 Create `lib/session/capture_service.dart` — the UI-side wrapper: RECORD_AUDIO + POST_NOTIFICATIONS permission checks, battery sanity check (`isIgnoringBatteryOptimizations` + prompt), service start with the polished notification (title, elapsed time via `updateService`, stop `NotificationButton`), command channel, event stream; verify a unit test covers the command/event mapping with the plugin mocked
+- [x] 3.3 Add `lib/session/session_models.dart` — `TranscriptTurn`, `SessionState`, and the service-to-UI event serialization; verify a serialization round-trip unit test passes (event to JSON and back)
 
 ## 4. Live session controller + post-session pass
 

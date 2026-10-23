@@ -6,6 +6,9 @@ import 'dart:typed_data';
 /// The 44-byte header is written up front with placeholder sizes and patched
 /// on [close]. Writes are synchronous on purpose: chunks are small (~3 KB per
 /// 100 ms of audio) and their order is what makes the file valid.
+///
+/// Moved from `lib/spike/` to `lib/session/` with the production capture
+/// service (task 3.1); the spike harness imports it from here.
 class WavFileWriter {
   WavFileWriter._(this._raf, this._path);
 

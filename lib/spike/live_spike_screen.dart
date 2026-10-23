@@ -11,8 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 
 import '../mistral/mistral.dart';
+import '../session/wav_file_writer.dart';
 import 'spike_providers.dart';
-import 'wav_writer.dart';
 
 /// Spike A — realtime path (tasks 3.1–3.3).
 ///
