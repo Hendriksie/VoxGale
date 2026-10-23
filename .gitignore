@@ -34,5 +34,14 @@ tmp/
 temp/
 *.tmp
 
+# Flutter/Dart/Pub related
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+*.iml
+
 # OpenCode local state
 .opencode/local/

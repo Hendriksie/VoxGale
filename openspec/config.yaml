@@ -1,32 +1,39 @@
 schema: spec-driven
 
-# Project context (optional)
-# Add only constraints that should guide OpenSpec artifacts and workflows.
-# Include constraints an agent cannot infer by reading the code.
-# Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  # Voxtral Live Transcription App (Android, Flutter)
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Live-capture + file-transcription app powered by the user's own Mistral API key.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  ## Stack & conventions
+  - Flutter (Dart), Riverpod, Material 3 theming
+  - Local storage: Drift (SQLite); API key: flutter_secure_storage only
+  - Mic capture via `record` (PCM16 stream); background capture via Android
+    foreground service with `microphone` type (`flutter_foreground_task`)
+  - UI: minimalistic & modern, Mistral orange #FF7000 as accent in BOTH
+    light and dark themes; orange used sparingly (recording state, CTAs)
+
+  ## Hard constraints
+  - ALL Mistral API code lives in lib/mistral/ behind abstract interfaces
+    (realtime WebSocket + batch REST). Never call the API from UI or
+    service code directly. Makes the API mockable and survives model-ID churn.
+  - Realtime transcription: wss://api.mistral.ai/v1/audio/transcriptions/realtime
+    (model voxtral-mini-transcribe-realtime-3-0), audio pcm_s16le @ 16 kHz mono
+    sent as base64 input_audio.append chunks. All session settings go in one
+    session.update before the first audio chunk (settings lock after that).
+    A realtime session takes `diarize` XOR `turn_detection`, never both.
+    v1 default: turn detection live + post-session batch pass (diarize=true)
+    on saved audio for speaker attribution; live diarization is a per-session
+    toggle. Batch: POST /v1/audio/transcriptions with models
+    voxtral-mini-transcribe-3-0 / voxtral-small-transcribe-3-0;
+    diarize=true requires timestamp_granularities=segment.
+  - Never hardcode, log, or commit API keys. User-supplied key only, over TLS
+    to api.mistral.ai.
+  - WebSocket client must handle reconnect + local audio buffering.
+
+  ## Working rules
+  - Every change starts with /opsx:propose; never implement before the
+    proposal exists. Keep most changes in Lite mode.
+  - Validate with `openspec validate --strict` before claiming done.
+  - Tests mock the Mistral WebSocket/REST layer (mocktail), never hit the
+    live API in unit tests.
