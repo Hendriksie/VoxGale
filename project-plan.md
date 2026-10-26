@@ -118,10 +118,10 @@ Practical v1 simplification for live mode: show the raw live text as it streams 
 - [x] Post-session diarization pass → speaker-labelled final transcript replaces provisional one
 
 ### Phase 2 — File mode + settings *(1–2 weekends)*
-- [ ] File import (file picker) → transcribe with speaker labels → transcript view
-- [ ] API key entry/validation screen (validate with a cheap test request); secure storage
-- [ ] Session minutes + estimated cost indicator; model choice (Small vs Mini) per transcription
-- [ ] Transcript history, export to text/Markdown, share sheet
+- [x] File import (file picker) → transcribe with speaker labels → transcript view
+- [x] API key entry/validation screen (validate with a cheap test request); secure storage
+- [x] Session minutes + estimated cost indicator; model choice (Small vs Mini) per transcription
+- [x] Transcript history, export to text/Markdown, share sheet
 
 ### Phase 3 — Polish & hardening *(1–2 weekends)*
 - [ ] Empty/error states (no key, no mic permission, no network, API errors, quota)
