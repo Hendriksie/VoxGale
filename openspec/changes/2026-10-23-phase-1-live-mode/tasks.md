@@ -42,11 +42,11 @@
 
 ## 7. Integration checks
 
-- [ ] 7.1 Run the full unit + widget test suite; verify all tests pass with the Mistral layer and the service channel mocked and no live API calls
-- [ ] 7.2 Run `flutter analyze`; verify zero issues
-- [ ] 7.3 Run `flutter build apk --debug`; verify it succeeds (the manifest/service declaration is unchanged)
-- [ ] 7.4 Run `openspec validate --strict` for this change; verify it passes
-- [ ] 7.5 Update `project-plan.md`: tick the Phase 1 milestone items once the smoke tests above pass; verify the file reads correctly
+- [x] 7.1 Run the full unit + widget test suite; verify all tests pass with the Mistral layer and the service channel mocked and no live API calls
+- [x] 7.2 Run `flutter analyze`; verify zero issues
+- [x] 7.3 Run `flutter build apk --debug`; verify it succeeds (the manifest/service declaration is unchanged)
+- [x] 7.4 Run `openspec validate --strict` for this change; verify it passes
+- [x] 7.5 Update `project-plan.md`: tick the Phase 1 milestone items once the smoke tests above pass; verify the file reads correctly
 
 ## Workflow follow-up
 

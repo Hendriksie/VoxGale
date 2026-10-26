@@ -112,10 +112,10 @@ Practical v1 simplification for live mode: show the raw live text as it streams 
 - [ ] **Spike C — batch path:** hard-coded file → batch transcription with `diarize=true` → speaker-labelled output
 
 ### Phase 1 — Live mode end-to-end *(2–3 weekends)*
-- [ ] Robust WebSocket lifecycle: reconnect on network drops, buffer audio during disconnects, graceful stop/end-of-turn handling
-- [ ] Foreground service polished: notification, pause/resume, battery sanity check
-- [ ] Live transcript UI with turn grouping; save session audio + transcript locally
-- [ ] Post-session diarization pass → speaker-labelled final transcript replaces provisional one
+- [x] Robust WebSocket lifecycle: reconnect on network drops, buffer audio during disconnects, graceful stop/end-of-turn handling
+- [x] Foreground service polished: notification, pause/resume, battery sanity check
+- [x] Live transcript UI with turn grouping; save session audio + transcript locally
+- [x] Post-session diarization pass → speaker-labelled final transcript replaces provisional one
 
 ### Phase 2 — File mode + settings *(1–2 weekends)*
 - [ ] File import (file picker) → transcribe with speaker labels → transcript view
