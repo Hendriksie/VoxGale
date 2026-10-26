@@ -349,7 +349,7 @@ class SystemSessionClock implements SessionClock {
   DateTime now() => DateTime.now();
 
   @override
-  Stream<int> ticks() => Stream<int>.periodic(tickInterval);
+  Stream<int> ticks() => Stream<int>.periodic(tickInterval, (count) => count);
 }
 
 /// The live session controller (design P1-D7): owns [LiveSessionState] and
@@ -401,6 +401,22 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     if (_captureInFlight) {
       return;
     }
+    try {
+      await _start(language: language, diarize: diarize);
+    } catch (e) {
+      // Any start-path failure surfaces as an error state — the session
+      // never hangs in the starting phase (live-transcription spec:
+      // surface capture and API errors without crashing).
+      await _teardown();
+      state = LiveSessionState(
+        phase: LiveSessionPhase.error,
+        error: 'Could not start the session: $e',
+      );
+    }
+  }
+
+  /// The start flow, wrapped by [start] with the error state.
+  Future<void> _start({String? language, bool diarize = false}) async {
     final apiKeyStore = ref.read(apiKeyStoreProvider);
     final captureService = ref.read(captureServiceProvider);
     final config = ref.read(mistralConfigProvider);

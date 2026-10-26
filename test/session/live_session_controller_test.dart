@@ -41,11 +41,19 @@ class FakeSessionClock implements SessionClock {
   final StreamController<int> tickController =
       StreamController<int>.broadcast(sync: true);
 
+  /// When true, [ticks] throws — simulates a start-path clock failure.
+  bool throwOnTicks = false;
+
   @override
   DateTime now() => nowValue;
 
   @override
-  Stream<int> ticks() => tickController.stream;
+  Stream<int> ticks() {
+    if (throwOnTicks) {
+      throw StateError('clock failure (test)');
+    }
+    return tickController.stream;
+  }
 
   void advance(Duration duration) => nowValue = nowValue.add(duration);
 
@@ -348,6 +356,26 @@ void main() {
           config: any(named: 'config'),
         ),
       ).called(1);
+    });
+
+    test('surfaces an unexpected start-path failure as an error state '
+        '(regression: the session must not hang in starting)', () async {
+      // A clock whose ticks() throws (as Stream.periodic without a
+      // computation callback did on Dart 3.13) must surface as an error
+      // state, not an unhandled exception with the spinner stuck.
+      clock.throwOnTicks = true;
+      stubServiceStart();
+
+      await controller().start();
+
+      expect(state().phase, LiveSessionPhase.error);
+      expect(state().hasError, isTrue);
+      verifyNever(
+        () => captureService.startSession(
+          sessionId: any(named: 'sessionId'),
+          config: any(named: 'config'),
+        ),
+      );
     });
 
     test('fails when the capture service does not start', () async {
