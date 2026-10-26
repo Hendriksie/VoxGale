@@ -45,6 +45,13 @@ class Sessions extends Table {
   /// Absolute path of the session audio WAV in app-private storage, or null
   /// once the audio was deleted.
   TextColumn get audioPath => text().nullable()();
+
+  /// Where the transcript came from (design P2-D3): `live` for a live
+  /// session, `file` for an imported file transcription.
+  TextColumn get source => text().withDefault(const Constant('live'))();
+
+  /// The imported file's name, for `file` sessions; null for live sessions.
+  TextColumn get sourceFileName => text().nullable()();
 }
 
 /// One transcript segment of a session (design P1-D4).
@@ -75,8 +82,26 @@ class Segments extends Table {
   Set<Column> get primaryKey => {sessionId, order};
 }
 
+/// The user's persisted transcription preferences (design P2-D3): a single
+/// row (id `default`) holding the default batch model and the language
+/// hint. Null columns mean "unset" — the readers apply the defaults.
+class Preferences extends Table {
+  /// Always `default` — the table holds exactly one row.
+  TextColumn get id => text()();
+
+  /// Default batch model id (Mini or Small Transcribe 3), or null for the
+  /// pinned Mini default.
+  TextColumn get defaultBatchModel => text().nullable()();
+
+  /// ISO 639-1 language hint, or null for automatic detection.
+  TextColumn get languageHint => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// The app's SQLite database.
-@DriftDatabase(tables: [Sessions, Segments])
+@DriftDatabase(tables: [Sessions, Segments, Preferences])
 class AppDatabase extends _$AppDatabase {
   /// Opens (creating if needed) the database file in the app's documents
   /// directory, via drift_flutter's platform glue.
@@ -86,5 +111,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (migrator, from, to) async {
+          if (from < 2) {
+            // Phase 2 (design P2-D3): sessions learn their source; the
+            // preferences table is new. Existing rows default to `live`.
+            await migrator.addColumn(sessions, sessions.source);
+            await migrator.addColumn(sessions, sessions.sourceFileName);
+            await migrator.createTable(preferences);
+          }
+        },
+      );
 }

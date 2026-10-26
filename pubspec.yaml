@@ -47,6 +47,15 @@ dependencies:
   # Locates the app documents directory for session audio files (promoted
   # from transitive — flutter_foreground_task already pulled it in).
   path_provider: ^2.1.6
+  # System file picker to import an audio file from device storage; no
+  # existing dependency provides it.
+  file_picker: ^13.3.0
+  # System share sheet to export transcripts to text/Markdown; the share
+  # channel needs a plugin.
+  share_plus: ^13.3.1
+  # Reads a picked audio file's duration via the platform media APIs, so the
+  # pre-upload cost estimate uses the real duration for any common format.
+  just_audio: ^0.10.6
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -100,6 +100,27 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('live'),
+  );
+  static const VerificationMeta _sourceFileNameMeta = const VerificationMeta(
+    'sourceFileName',
+  );
+  @override
+  late final GeneratedColumn<String> sourceFileName = GeneratedColumn<String>(
+    'source_file_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -111,6 +132,8 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     language,
     status,
     audioPath,
+    source,
+    sourceFileName,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -191,6 +214,21 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         audioPath.isAcceptableOrUnknown(data['audio_path']!, _audioPathMeta),
       );
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('source_file_name')) {
+      context.handle(
+        _sourceFileNameMeta,
+        sourceFileName.isAcceptableOrUnknown(
+          data['source_file_name']!,
+          _sourceFileNameMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -236,6 +274,14 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.string,
         data['${effectivePrefix}audio_path'],
       ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      sourceFileName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_file_name'],
+      ),
     );
   }
 
@@ -276,6 +322,13 @@ class Session extends DataClass implements Insertable<Session> {
   /// Absolute path of the session audio WAV in app-private storage, or null
   /// once the audio was deleted.
   final String? audioPath;
+
+  /// Where the transcript came from (design P2-D3): `live` for a live
+  /// session, `file` for an imported file transcription.
+  final String source;
+
+  /// The imported file's name, for `file` sessions; null for live sessions.
+  final String? sourceFileName;
   const Session({
     required this.id,
     required this.startedAt,
@@ -286,6 +339,8 @@ class Session extends DataClass implements Insertable<Session> {
     this.language,
     required this.status,
     this.audioPath,
+    required this.source,
+    this.sourceFileName,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -306,6 +361,10 @@ class Session extends DataClass implements Insertable<Session> {
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || audioPath != null) {
       map['audio_path'] = Variable<String>(audioPath);
+    }
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || sourceFileName != null) {
+      map['source_file_name'] = Variable<String>(sourceFileName);
     }
     return map;
   }
@@ -329,6 +388,10 @@ class Session extends DataClass implements Insertable<Session> {
       audioPath: audioPath == null && nullToAbsent
           ? const Value.absent()
           : Value(audioPath),
+      source: Value(source),
+      sourceFileName: sourceFileName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceFileName),
     );
   }
 
@@ -347,6 +410,8 @@ class Session extends DataClass implements Insertable<Session> {
       language: serializer.fromJson<String?>(json['language']),
       status: serializer.fromJson<String>(json['status']),
       audioPath: serializer.fromJson<String?>(json['audioPath']),
+      source: serializer.fromJson<String>(json['source']),
+      sourceFileName: serializer.fromJson<String?>(json['sourceFileName']),
     );
   }
   @override
@@ -362,6 +427,8 @@ class Session extends DataClass implements Insertable<Session> {
       'language': serializer.toJson<String?>(language),
       'status': serializer.toJson<String>(status),
       'audioPath': serializer.toJson<String?>(audioPath),
+      'source': serializer.toJson<String>(source),
+      'sourceFileName': serializer.toJson<String?>(sourceFileName),
     };
   }
 
@@ -375,6 +442,8 @@ class Session extends DataClass implements Insertable<Session> {
     Value<String?> language = const Value.absent(),
     String? status,
     Value<String?> audioPath = const Value.absent(),
+    String? source,
+    Value<String?> sourceFileName = const Value.absent(),
   }) => Session(
     id: id ?? this.id,
     startedAt: startedAt ?? this.startedAt,
@@ -387,6 +456,10 @@ class Session extends DataClass implements Insertable<Session> {
     language: language.present ? language.value : this.language,
     status: status ?? this.status,
     audioPath: audioPath.present ? audioPath.value : this.audioPath,
+    source: source ?? this.source,
+    sourceFileName: sourceFileName.present
+        ? sourceFileName.value
+        : this.sourceFileName,
   );
   Session copyWithCompanion(SessionsCompanion data) {
     return Session(
@@ -405,6 +478,10 @@ class Session extends DataClass implements Insertable<Session> {
       language: data.language.present ? data.language.value : this.language,
       status: data.status.present ? data.status.value : this.status,
       audioPath: data.audioPath.present ? data.audioPath.value : this.audioPath,
+      source: data.source.present ? data.source.value : this.source,
+      sourceFileName: data.sourceFileName.present
+          ? data.sourceFileName.value
+          : this.sourceFileName,
     );
   }
 
@@ -419,7 +496,9 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('model: $model, ')
           ..write('language: $language, ')
           ..write('status: $status, ')
-          ..write('audioPath: $audioPath')
+          ..write('audioPath: $audioPath, ')
+          ..write('source: $source, ')
+          ..write('sourceFileName: $sourceFileName')
           ..write(')'))
         .toString();
   }
@@ -435,6 +514,8 @@ class Session extends DataClass implements Insertable<Session> {
     language,
     status,
     audioPath,
+    source,
+    sourceFileName,
   );
   @override
   bool operator ==(Object other) =>
@@ -448,7 +529,9 @@ class Session extends DataClass implements Insertable<Session> {
           other.model == this.model &&
           other.language == this.language &&
           other.status == this.status &&
-          other.audioPath == this.audioPath);
+          other.audioPath == this.audioPath &&
+          other.source == this.source &&
+          other.sourceFileName == this.sourceFileName);
 }
 
 class SessionsCompanion extends UpdateCompanion<Session> {
@@ -461,6 +544,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<String?> language;
   final Value<String> status;
   final Value<String?> audioPath;
+  final Value<String> source;
+  final Value<String?> sourceFileName;
   final Value<int> rowid;
   const SessionsCompanion({
     this.id = const Value.absent(),
@@ -472,6 +557,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.language = const Value.absent(),
     this.status = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceFileName = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SessionsCompanion.insert({
@@ -484,6 +571,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.language = const Value.absent(),
     required String status,
     this.audioPath = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceFileName = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        startedAt = Value(startedAt),
@@ -500,6 +589,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<String>? language,
     Expression<String>? status,
     Expression<String>? audioPath,
+    Expression<String>? source,
+    Expression<String>? sourceFileName,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -513,6 +604,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       if (language != null) 'language': language,
       if (status != null) 'status': status,
       if (audioPath != null) 'audio_path': audioPath,
+      if (source != null) 'source': source,
+      if (sourceFileName != null) 'source_file_name': sourceFileName,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -527,6 +620,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<String?>? language,
     Value<String>? status,
     Value<String?>? audioPath,
+    Value<String>? source,
+    Value<String?>? sourceFileName,
     Value<int>? rowid,
   }) {
     return SessionsCompanion(
@@ -539,6 +634,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       language: language ?? this.language,
       status: status ?? this.status,
       audioPath: audioPath ?? this.audioPath,
+      source: source ?? this.source,
+      sourceFileName: sourceFileName ?? this.sourceFileName,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -573,6 +670,12 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     if (audioPath.present) {
       map['audio_path'] = Variable<String>(audioPath.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (sourceFileName.present) {
+      map['source_file_name'] = Variable<String>(sourceFileName.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -591,6 +694,8 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('language: $language, ')
           ..write('status: $status, ')
           ..write('audioPath: $audioPath, ')
+          ..write('source: $source, ')
+          ..write('sourceFileName: $sourceFileName, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1049,16 +1154,308 @@ class SegmentsCompanion extends UpdateCompanion<Segment> {
   }
 }
 
+class $PreferencesTable extends Preferences
+    with TableInfo<$PreferencesTable, Preference> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PreferencesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _defaultBatchModelMeta = const VerificationMeta(
+    'defaultBatchModel',
+  );
+  @override
+  late final GeneratedColumn<String> defaultBatchModel =
+      GeneratedColumn<String>(
+        'default_batch_model',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _languageHintMeta = const VerificationMeta(
+    'languageHint',
+  );
+  @override
+  late final GeneratedColumn<String> languageHint = GeneratedColumn<String>(
+    'language_hint',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, defaultBatchModel, languageHint];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'preferences';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Preference> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('default_batch_model')) {
+      context.handle(
+        _defaultBatchModelMeta,
+        defaultBatchModel.isAcceptableOrUnknown(
+          data['default_batch_model']!,
+          _defaultBatchModelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('language_hint')) {
+      context.handle(
+        _languageHintMeta,
+        languageHint.isAcceptableOrUnknown(
+          data['language_hint']!,
+          _languageHintMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Preference map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Preference(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      defaultBatchModel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_batch_model'],
+      ),
+      languageHint: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}language_hint'],
+      ),
+    );
+  }
+
+  @override
+  $PreferencesTable createAlias(String alias) {
+    return $PreferencesTable(attachedDatabase, alias);
+  }
+}
+
+class Preference extends DataClass implements Insertable<Preference> {
+  /// Always `default` — the table holds exactly one row.
+  final String id;
+
+  /// Default batch model id (Mini or Small Transcribe 3), or null for the
+  /// pinned Mini default.
+  final String? defaultBatchModel;
+
+  /// ISO 639-1 language hint, or null for automatic detection.
+  final String? languageHint;
+  const Preference({
+    required this.id,
+    this.defaultBatchModel,
+    this.languageHint,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || defaultBatchModel != null) {
+      map['default_batch_model'] = Variable<String>(defaultBatchModel);
+    }
+    if (!nullToAbsent || languageHint != null) {
+      map['language_hint'] = Variable<String>(languageHint);
+    }
+    return map;
+  }
+
+  PreferencesCompanion toCompanion(bool nullToAbsent) {
+    return PreferencesCompanion(
+      id: Value(id),
+      defaultBatchModel: defaultBatchModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultBatchModel),
+      languageHint: languageHint == null && nullToAbsent
+          ? const Value.absent()
+          : Value(languageHint),
+    );
+  }
+
+  factory Preference.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Preference(
+      id: serializer.fromJson<String>(json['id']),
+      defaultBatchModel: serializer.fromJson<String?>(
+        json['defaultBatchModel'],
+      ),
+      languageHint: serializer.fromJson<String?>(json['languageHint']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'defaultBatchModel': serializer.toJson<String?>(defaultBatchModel),
+      'languageHint': serializer.toJson<String?>(languageHint),
+    };
+  }
+
+  Preference copyWith({
+    String? id,
+    Value<String?> defaultBatchModel = const Value.absent(),
+    Value<String?> languageHint = const Value.absent(),
+  }) => Preference(
+    id: id ?? this.id,
+    defaultBatchModel: defaultBatchModel.present
+        ? defaultBatchModel.value
+        : this.defaultBatchModel,
+    languageHint: languageHint.present ? languageHint.value : this.languageHint,
+  );
+  Preference copyWithCompanion(PreferencesCompanion data) {
+    return Preference(
+      id: data.id.present ? data.id.value : this.id,
+      defaultBatchModel: data.defaultBatchModel.present
+          ? data.defaultBatchModel.value
+          : this.defaultBatchModel,
+      languageHint: data.languageHint.present
+          ? data.languageHint.value
+          : this.languageHint,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Preference(')
+          ..write('id: $id, ')
+          ..write('defaultBatchModel: $defaultBatchModel, ')
+          ..write('languageHint: $languageHint')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, defaultBatchModel, languageHint);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Preference &&
+          other.id == this.id &&
+          other.defaultBatchModel == this.defaultBatchModel &&
+          other.languageHint == this.languageHint);
+}
+
+class PreferencesCompanion extends UpdateCompanion<Preference> {
+  final Value<String> id;
+  final Value<String?> defaultBatchModel;
+  final Value<String?> languageHint;
+  final Value<int> rowid;
+  const PreferencesCompanion({
+    this.id = const Value.absent(),
+    this.defaultBatchModel = const Value.absent(),
+    this.languageHint = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PreferencesCompanion.insert({
+    required String id,
+    this.defaultBatchModel = const Value.absent(),
+    this.languageHint = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id);
+  static Insertable<Preference> custom({
+    Expression<String>? id,
+    Expression<String>? defaultBatchModel,
+    Expression<String>? languageHint,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (defaultBatchModel != null) 'default_batch_model': defaultBatchModel,
+      if (languageHint != null) 'language_hint': languageHint,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PreferencesCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? defaultBatchModel,
+    Value<String?>? languageHint,
+    Value<int>? rowid,
+  }) {
+    return PreferencesCompanion(
+      id: id ?? this.id,
+      defaultBatchModel: defaultBatchModel ?? this.defaultBatchModel,
+      languageHint: languageHint ?? this.languageHint,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (defaultBatchModel.present) {
+      map['default_batch_model'] = Variable<String>(defaultBatchModel.value);
+    }
+    if (languageHint.present) {
+      map['language_hint'] = Variable<String>(languageHint.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PreferencesCompanion(')
+          ..write('id: $id, ')
+          ..write('defaultBatchModel: $defaultBatchModel, ')
+          ..write('languageHint: $languageHint, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $SessionsTable sessions = $SessionsTable(this);
   late final $SegmentsTable segments = $SegmentsTable(this);
+  late final $PreferencesTable preferences = $PreferencesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [sessions, segments];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    sessions,
+    segments,
+    preferences,
+  ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
     WritePropagation(
@@ -1081,6 +1478,8 @@ typedef $$SessionsTableCreateCompanionBuilder = SessionsCompanion Function({
   Value<String?> language,
   required String status,
   Value<String?> audioPath,
+  Value<String> source,
+  Value<String?> sourceFileName,
   Value<int> rowid,
 });
 typedef $$SessionsTableUpdateCompanionBuilder = SessionsCompanion Function({
@@ -1093,6 +1492,8 @@ typedef $$SessionsTableUpdateCompanionBuilder = SessionsCompanion Function({
   Value<String?> language,
   Value<String> status,
   Value<String?> audioPath,
+  Value<String> source,
+  Value<String?> sourceFileName,
   Value<int> rowid,
 });
 
@@ -1171,6 +1572,16 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<String> get audioPath => $composableBuilder(
     column: $table.audioPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceFileName => $composableBuilder(
+    column: $table.sourceFileName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1253,6 +1664,16 @@ class $$SessionsTableOrderingComposer
     column: $table.audioPath,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceFileName => $composableBuilder(
+    column: $table.sourceFileName,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SessionsTableAnnotationComposer
@@ -1296,6 +1717,14 @@ class $$SessionsTableAnnotationComposer
 
   GeneratedColumn<String> get audioPath =>
       $composableBuilder(column: $table.audioPath, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceFileName => $composableBuilder(
+    column: $table.sourceFileName,
+    builder: (column) => column,
+  );
 
   Expression<T> segmentsRefs<T extends Object>(
     Expression<T> Function($$SegmentsTableAnnotationComposer a) f,
@@ -1360,6 +1789,8 @@ class $$SessionsTableTableManager
                 Value<String?> language = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> audioPath = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> sourceFileName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SessionsCompanion(
                 id: id,
@@ -1371,6 +1802,8 @@ class $$SessionsTableTableManager
                 language: language,
                 status: status,
                 audioPath: audioPath,
+                source: source,
+                sourceFileName: sourceFileName,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1384,6 +1817,8 @@ class $$SessionsTableTableManager
                 Value<String?> language = const Value.absent(),
                 required String status,
                 Value<String?> audioPath = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> sourceFileName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SessionsCompanion.insert(
                 id: id,
@@ -1395,6 +1830,8 @@ class $$SessionsTableTableManager
                 language: language,
                 status: status,
                 audioPath: audioPath,
+                source: source,
+                sourceFileName: sourceFileName,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -1413,14 +1850,19 @@ class $$SessionsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (segmentsRefs)
-                    await $_getPrefetchedData<Session, $SessionsTable, Segment>(
+                    await $_getPrefetchedDataByColumns<
+                      Session,
+                      $SessionsTable,
+                      Segment,
+                      $SegmentsTable
+                    >(
                       currentTable: table,
                       referencedTable: $$SessionsTableReferences
                           ._segmentsRefsTable(db),
                       managerFromTypedResult: (p0) =>
                           $$SessionsTableReferences(db, table, p0).segmentsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.sessionId == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'session_id',
                       typedResults: items,
                     ),
                 ];
@@ -1785,6 +2227,181 @@ typedef $$SegmentsTableProcessedTableManager =
       Segment,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$PreferencesTableCreateCompanionBuilder =
+    PreferencesCompanion Function({
+      required String id,
+      Value<String?> defaultBatchModel,
+      Value<String?> languageHint,
+      Value<int> rowid,
+    });
+typedef $$PreferencesTableUpdateCompanionBuilder =
+    PreferencesCompanion Function({
+      Value<String> id,
+      Value<String?> defaultBatchModel,
+      Value<String?> languageHint,
+      Value<int> rowid,
+    });
+
+class $$PreferencesTableFilterComposer
+    extends Composer<_$AppDatabase, $PreferencesTable> {
+  $$PreferencesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultBatchModel => $composableBuilder(
+    column: $table.defaultBatchModel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get languageHint => $composableBuilder(
+    column: $table.languageHint,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PreferencesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PreferencesTable> {
+  $$PreferencesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultBatchModel => $composableBuilder(
+    column: $table.defaultBatchModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get languageHint => $composableBuilder(
+    column: $table.languageHint,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PreferencesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PreferencesTable> {
+  $$PreferencesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultBatchModel => $composableBuilder(
+    column: $table.defaultBatchModel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get languageHint => $composableBuilder(
+    column: $table.languageHint,
+    builder: (column) => column,
+  );
+}
+
+class $$PreferencesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PreferencesTable,
+          Preference,
+          $$PreferencesTableFilterComposer,
+          $$PreferencesTableOrderingComposer,
+          $$PreferencesTableAnnotationComposer,
+          $$PreferencesTableCreateCompanionBuilder,
+          $$PreferencesTableUpdateCompanionBuilder,
+          (
+            Preference,
+            BaseReferences<_$AppDatabase, $PreferencesTable, Preference>,
+          ),
+          Preference,
+          PrefetchHooks Function()
+        > {
+  $$PreferencesTableTableManager(_$AppDatabase db, $PreferencesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PreferencesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PreferencesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PreferencesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> defaultBatchModel = const Value.absent(),
+                Value<String?> languageHint = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PreferencesCompanion(
+                id: id,
+                defaultBatchModel: defaultBatchModel,
+                languageHint: languageHint,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> defaultBatchModel = const Value.absent(),
+                Value<String?> languageHint = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PreferencesCompanion.insert(
+                id: id,
+                defaultBatchModel: defaultBatchModel,
+                languageHint: languageHint,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PreferencesTable, Preference>(table),
+                  BaseReferences<_$AppDatabase, $PreferencesTable, Preference>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PreferencesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PreferencesTable,
+      Preference,
+      $$PreferencesTableFilterComposer,
+      $$PreferencesTableOrderingComposer,
+      $$PreferencesTableAnnotationComposer,
+      $$PreferencesTableCreateCompanionBuilder,
+      $$PreferencesTableUpdateCompanionBuilder,
+      (
+        Preference,
+        BaseReferences<_$AppDatabase, $PreferencesTable, Preference>,
+      ),
+      Preference,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1793,4 +2410,6 @@ class $AppDatabaseManager {
       $$SessionsTableTableManager(_db, _db.sessions);
   $$SegmentsTableTableManager get segments =>
       $$SegmentsTableTableManager(_db, _db.segments);
+  $$PreferencesTableTableManager get preferences =>
+      $$PreferencesTableTableManager(_db, _db.preferences);
 }

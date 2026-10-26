@@ -26,12 +26,46 @@ final apiKeyStoreProvider =
 final apiKeyProvider =
     FutureProvider<String?>((ref) => ref.watch(apiKeyStoreProvider).readKey());
 
-/// The on-device store for finalized sessions.
-final sessionRepositoryProvider = Provider<SessionRepository>((ref) {
-  final repository = DriftSessionRepository(AppDatabase());
-  ref.onDispose(repository.close);
-  return repository;
+/// The app's SQLite database, shared by the storage repositories (design
+/// P2-D3). Closed when the provider is disposed.
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  final db = AppDatabase();
+  ref.onDispose(db.close);
+  return db;
 });
+
+/// The on-device store for finalized sessions.
+final sessionRepositoryProvider = Provider<SessionRepository>(
+    (ref) => DriftSessionRepository(ref.watch(appDatabaseProvider)));
+
+/// The store for the user's transcription preferences (design P2-D3).
+final preferencesRepositoryProvider = Provider<PreferencesRepository>(
+    (ref) => DriftPreferencesRepository(ref.watch(appDatabaseProvider)));
+
+/// The user's persisted preferences; unset fields are null.
+final preferencesProvider = FutureProvider<StoredPreferences>(
+    (ref) => ref.watch(preferencesRepositoryProvider).loadPreferences());
+
+/// The default batch model for transcriptions that don't choose one: the
+/// persisted preference, falling back to the pinned Mini model (settings
+/// spec).
+final defaultBatchModelProvider = FutureProvider<String>((ref) async {
+  final config = ref.watch(mistralConfigProvider);
+  final preferences = await ref.watch(preferencesProvider.future);
+  return preferences.defaultBatchModel ?? config.batchMiniModel;
+});
+
+/// The pinned language hint, or null for automatic detection (settings spec).
+final languageHintProvider = FutureProvider<String?>((ref) async {
+  final preferences = await ref.watch(preferencesProvider.future);
+  return preferences.languageHint;
+});
+
+/// Validates a candidate API key with a cheap test request before it is
+/// treated as saved (settings spec). The candidate key is passed per call,
+/// so the settings controller can validate before saving.
+final keyValidationClientProvider =
+    Provider<KeyValidationClient>((ref) => DioKeyValidationClient());
 
 /// The batch client the post-session diarization pass runs on. The API key
 /// is read here — at client construction, exactly like the spike harness —

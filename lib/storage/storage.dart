@@ -2,4 +2,5 @@
 library;
 
 export 'app_database.dart';
+export 'preferences_repository.dart';
 export 'session_repository.dart';

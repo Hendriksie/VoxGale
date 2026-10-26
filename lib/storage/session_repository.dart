@@ -35,7 +35,15 @@ class StoredSession {
     this.actualCost,
     this.language,
     this.audioPath,
+    this.source = sourceLive,
+    this.sourceFileName,
   });
+
+  /// Source value for a live session (design P2-D3).
+  static const String sourceLive = 'live';
+
+  /// Source value for an imported file transcription (design P2-D3).
+  static const String sourceFile = 'file';
 
   /// Stable session id; also the file name of the session audio
   /// (`<id>.wav` in the app's documents directory).
@@ -66,6 +74,14 @@ class StoredSession {
   /// once the audio was deleted.
   final String? audioPath;
 
+  /// Where the transcript came from: [sourceLive] or [sourceFile]
+  /// (design P2-D3).
+  final String source;
+
+  /// The imported file's name, for [sourceFile] sessions; null for live
+  /// sessions.
+  final String? sourceFileName;
+
   /// Two sessions are equal when they describe the same stored record.
   /// [startedAt] is compared at millisecond precision — the precision the
   /// SQLite column stores — so a save/load round-trip preserves equality
@@ -83,7 +99,9 @@ class StoredSession {
           model == other.model &&
           language == other.language &&
           status == other.status &&
-          audioPath == other.audioPath;
+          audioPath == other.audioPath &&
+          source == other.source &&
+          sourceFileName == other.sourceFileName;
 
   @override
   int get hashCode => Object.hash(
@@ -96,6 +114,8 @@ class StoredSession {
         language,
         status,
         audioPath,
+        source,
+        sourceFileName,
       );
 }
 
@@ -199,6 +219,16 @@ abstract interface class SessionRepository {
   /// Deletes a session, its segments, and its audio file (when the file still
   /// exists). Deleting an unknown id is a no-op.
   Future<void> deleteSession(String id);
+
+  /// Lists all saved sessions, newest first (design P2-D3). When
+  /// [searchQuery] is a non-empty string, only sessions whose transcript
+  /// text contains it are returned (transcript-history spec: search by text
+  /// content).
+  Future<List<StoredSession>> listSessions({String? searchQuery});
+
+  /// Deletes every session, its segments, and all session audio files
+  /// (transcript-history spec: delete all history).
+  Future<void> deleteAllSessions();
 
   /// Closes the underlying storage. The repository cannot be used afterwards.
   Future<void> close();
@@ -313,6 +343,47 @@ class DriftSessionRepository implements SessionRepository {
   }
 
   @override
+  Future<List<StoredSession>> listSessions({String? searchQuery}) async {
+    final query = searchQuery?.trim() ?? '';
+    if (query.isEmpty) {
+      final rows = await (_db.select(_db.sessions)
+            ..orderBy([(s) => OrderingTerm.desc(s.startedAt)]))
+          .get();
+      return rows.map(_toStoredSession).toList();
+    }
+    // Search the segment text. LIKE wildcards in the query act as wildcards —
+    // acceptable at personal-history scale (design P2-D3).
+    final pattern = '%$query%';
+    final matchingIds = _db.selectOnly(_db.segments)
+      ..addColumns([_db.segments.sessionId])
+      ..where(_db.segments.segmentText.like(pattern));
+    final rows = await (_db.select(_db.sessions)
+          ..where((s) => s.id.isInQuery(matchingIds))
+          ..orderBy([(s) => OrderingTerm.desc(s.startedAt)]))
+        .get();
+    return rows.map(_toStoredSession).toList();
+  }
+
+  @override
+  Future<void> deleteAllSessions() async {
+    final rows = await _db.select(_db.sessions).get();
+    await _db.transaction(() async {
+      await _db.delete(_db.segments).go();
+      await _db.delete(_db.sessions).go();
+    });
+    for (final row in rows) {
+      final audioPath = row.audioPath;
+      if (audioPath == null) {
+        continue;
+      }
+      final file = File(audioPath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+  }
+
+  @override
   Future<void> close() => _db.close();
 
   SessionsCompanion _sessionCompanion(StoredSession session) {
@@ -326,6 +397,8 @@ class DriftSessionRepository implements SessionRepository {
       language: Value(session.language),
       status: _statusToText(session.status),
       audioPath: Value(session.audioPath),
+      source: Value(session.source),
+      sourceFileName: Value(session.sourceFileName),
     );
   }
 
@@ -351,6 +424,8 @@ class DriftSessionRepository implements SessionRepository {
       actualCost: row.actualCost,
       language: row.language,
       audioPath: row.audioPath,
+      source: row.source,
+      sourceFileName: row.sourceFileName,
     );
   }
 

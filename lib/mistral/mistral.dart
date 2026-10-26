@@ -9,6 +9,7 @@ library;
 export 'api_key_store.dart';
 export 'batch/batch_transcription_client.dart';
 export 'batch/dio_batch_transcription_client.dart';
+export 'key_validation_client.dart';
 export 'mistral_api_exception.dart';
 export 'mistral_config.dart';
 export 'realtime/realtime_events.dart';
