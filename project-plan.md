@@ -106,10 +106,10 @@ Practical v1 simplification for live mode: show the raw live text as it streams 
 ## 6. Milestones
 
 ### Phase 0 — Spike: the riskiest pieces first *(1–2 weekends)*
-- [ ] Flutter project, Git repo, Material 3 scaffold with orange light/dark themes
-- [ ] **Spike A — realtime path:** mic → PCM16 stream → Mistral realtime WebSocket → text on screen. Nothing else. This proves the core.
-- [ ] **Spike B — background capture:** same pipeline running via foreground service with screen off for 30+ min without Android killing it
-- [ ] **Spike C — batch path:** hard-coded file → batch transcription with `diarize=true` → speaker-labelled output
+- [x] Flutter project, Git repo, Material 3 scaffold with orange light/dark themes
+- [x] **Spike A — realtime path:** mic → PCM16 stream → Mistral realtime WebSocket → text on screen. Nothing else. This proves the core.
+- [x] **Spike B — background capture:** same pipeline running via foreground service with screen off for 30+ min without Android killing it
+- [x] **Spike C — batch path:** hard-coded file → batch transcription with `diarize=true` → speaker-labelled output
 
 ### Phase 1 — Live mode end-to-end *(2–3 weekends)*
 - [x] Robust WebSocket lifecycle: reconnect on network drops, buffer audio during disconnects, graceful stop/end-of-turn handling
