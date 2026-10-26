@@ -10,6 +10,7 @@ import 'package:voxtral_live/main.dart';
 import 'package:voxtral_live/mistral/mistral.dart';
 import 'package:voxtral_live/session/live_session_controller.dart';
 import 'package:voxtral_live/session/session_providers.dart';
+import 'package:voxtral_live/storage/storage.dart';
 
 /// In-memory [ApiKeyStore] for widget tests.
 class FakeApiKeyStore implements ApiKeyStore {
@@ -83,6 +84,19 @@ class FakeLiveSessionController extends LiveSessionController {
   @override
   Future<void> openBatterySettings() async {
     calls.add('openBatterySettings');
+  }
+}
+
+/// In-memory [PreferencesRepository] for tests (design P2-D3).
+class InMemoryPreferencesRepository implements PreferencesRepository {
+  StoredPreferences stored = const StoredPreferences();
+
+  @override
+  Future<StoredPreferences> loadPreferences() async => stored;
+
+  @override
+  Future<void> savePreferences(StoredPreferences preferences) async {
+    stored = preferences;
   }
 }
 

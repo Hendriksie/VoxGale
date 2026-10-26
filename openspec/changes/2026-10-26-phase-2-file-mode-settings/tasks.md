@@ -13,9 +13,9 @@
 
 ## 3. Settings screen (design P2-D4)
 
-- [ ] 3.1 Implement `SettingsController` (Riverpod notifier): key status (saved/not saved, never the value), save-with-validation (validate → write to `SecureStorageApiKeyStore` only on success; failure leaves the key unsaved with an error and retry), key removal, and preference load/save; verify with unit tests (mocktail fakes for the validator, key store, and preferences repository: invalid key is not saved, network failure is retryable, removal blocks transcription until a new key is saved).
-- [ ] 3.2 Implement `lib/app/settings_screen.dart`: key status display, key entry with validate/save progress and error states, remove-key action, and default-model + language-hint controls bound to preferences; verify with widget tests (missing-key state, invalid-key error shown, preference changes persist through the fake repository).
-- [ ] 3.3 Remove the debug-only API key entry tile from `lib/app/debug_hub_screen.dart` (the settings screen replaces it); keep the spike screens; verify `flutter analyze` is clean and the debug hub widget test passes (update it if it referenced the tile).
+- [x] 3.1 Implement `SettingsController` (Riverpod notifier): key status (saved/not saved, never the value), save-with-validation (validate → write to `SecureStorageApiKeyStore` only on success; failure leaves the key unsaved with an error and retry), key removal, and preference load/save; verify with unit tests (mocktail fakes for the validator, key store, and preferences repository: invalid key is not saved, network failure is retryable, removal blocks transcription until a new key is saved).
+- [x] 3.2 Implement `lib/app/settings_screen.dart`: key status display, key entry with validate/save progress and error states, remove-key action, and default-model + language-hint controls bound to preferences; verify with widget tests (missing-key state, invalid-key error shown, preference changes persist through the fake repository).
+- [x] 3.3 Remove the debug-only API key entry tile from `lib/app/debug_hub_screen.dart` (the settings screen replaces it); keep the spike screens; verify `flutter analyze` is clean and the debug hub widget test passes (update it if it referenced the tile).
 
 ## 4. File transcription flow (design P2-D1, P2-D2, P2-D5)
 

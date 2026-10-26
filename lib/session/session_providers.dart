@@ -13,6 +13,7 @@ import '../storage/storage.dart';
 import 'capture_service.dart';
 import 'diarization_pass.dart';
 import 'live_session_controller.dart';
+import 'settings_controller.dart';
 
 /// Pinned model IDs and rates (single source, design D3/D7).
 final mistralConfigProvider =
@@ -106,3 +107,8 @@ final sessionFinalizeTimeoutProvider =
 final liveSessionControllerProvider =
     NotifierProvider<LiveSessionController, LiveSessionState>(
         LiveSessionController.new);
+
+/// The settings screen's controller (design P2-D4).
+final settingsControllerProvider =
+    NotifierProvider<SettingsController, SettingsState>(
+        SettingsController.new);
