@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voxtral_live/main.dart';
 import 'package:voxtral_live/mistral/mistral.dart';
+import 'package:voxtral_live/session/file_transcription_controller.dart';
 import 'package:voxtral_live/session/live_session_controller.dart';
 import 'package:voxtral_live/session/session_providers.dart';
 import 'package:voxtral_live/storage/storage.dart';
@@ -84,6 +85,43 @@ class FakeLiveSessionController extends LiveSessionController {
   @override
   Future<void> openBatterySettings() async {
     calls.add('openBatterySettings');
+  }
+}
+
+/// A [FileTranscriptionController] test double: [build] returns the fixed,
+/// settable state (no picker, prober, repository, or Mistral client is
+/// touched), and the action methods record their calls in [calls].
+class FakeFileTranscriptionController extends FileTranscriptionController {
+  FakeFileTranscriptionController([FileTranscriptionState? initial])
+      : _state = initial ?? const FileTranscriptionState();
+
+  final FileTranscriptionState _state;
+
+  /// The action calls, in order: 'pick', 'setModel' with the model id, and
+  /// 'transcribe'.
+  final List<String> calls = [];
+
+  @override
+  FileTranscriptionState build() => _state;
+
+  /// Replaces the rendered state (a test drives the screen through phases).
+  void setState(FileTranscriptionState value) {
+    state = value;
+  }
+
+  @override
+  Future<void> pick() async {
+    calls.add('pick');
+  }
+
+  @override
+  void setModel(String model) {
+    calls.add('setModel:$model');
+  }
+
+  @override
+  Future<void> transcribe() async {
+    calls.add('transcribe');
   }
 }
 

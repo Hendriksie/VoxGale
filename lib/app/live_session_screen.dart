@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../session/live_session_controller.dart';
 import '../session/session_providers.dart';
 import 'debug_hub_screen.dart';
+import 'formatters.dart';
 import 'theme.dart';
 import 'transcript_widgets.dart';
 
@@ -548,17 +549,3 @@ class _ControlsBar extends StatelessWidget {
     );
   }
 }
-
-/// Formats a session length as `m:ss` (or `h:mm:ss` past an hour).
-String formatElapsed(int seconds) {
-  final duration = Duration(seconds: seconds);
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60);
-  final secs = duration.inSeconds.remainder(60);
-  final mm = minutes.toString().padLeft(2, '0');
-  final ss = secs.toString().padLeft(2, '0');
-  return hours > 0 ? '$hours:$mm:$ss' : '$minutes:$ss';
-}
-
-/// Formats a USD cost with mill precision (costs are sub-cent per minute).
-String formatCost(double value) => '\$${value.toStringAsFixed(3)}';

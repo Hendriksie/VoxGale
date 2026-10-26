@@ -12,6 +12,7 @@ import '../mistral/mistral.dart';
 import '../storage/storage.dart';
 import 'capture_service.dart';
 import 'diarization_pass.dart';
+import 'file_transcription_controller.dart';
 import 'live_session_controller.dart';
 import 'settings_controller.dart';
 
@@ -112,3 +113,16 @@ final liveSessionControllerProvider =
 final settingsControllerProvider =
     NotifierProvider<SettingsController, SettingsState>(
         SettingsController.new);
+
+/// The system file picker seam for audio files (design P2-D1).
+final audioFilePickerProvider =
+    Provider<AudioFilePicker>((ref) => FilePickerAudioFilePicker());
+
+/// The audio-duration prober seam (design P2-D2).
+final audioDurationProberProvider =
+    Provider<AudioDurationProber>((ref) => JustAudioDurationProber());
+
+/// The file transcription controller (design P2-D1).
+final fileTranscriptionControllerProvider =
+    NotifierProvider<FileTranscriptionController, FileTranscriptionState>(
+        FileTranscriptionController.new);
