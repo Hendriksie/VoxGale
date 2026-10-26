@@ -35,7 +35,7 @@
 ## 6. Physical-device smoke tests (project rule: mic/foreground service — emulators lie about background capture)
 
 - [x] 6.1 PHYSICAL-DEVICE SMOKE TEST: full live session on a real device — start, speak (turn-grouped transcript appears), pause/resume, stop; verify the provisional transcript is finalized and saved, the pass is offered with its estimated cost, running it replaces the transcript with speaker-labelled segments, and the audio file is deleted
-- [ ] 6.2 PHYSICAL-DEVICE SMOKE TEST: start a session, then turn the screen off for 30+ minutes; verify capture and transcription continue, the notification shows the elapsed time with a stop action, and tapping the notification stop action ends the session gracefully
+- [x] 6.2 PHYSICAL-DEVICE SMOKE TEST: start a session, then turn the screen off for 30+ minutes; verify capture and transcription continue, the notification shows the elapsed time with a stop action, and tapping the notification stop action ends the session gracefully
 - [x] 6.3 PHYSICAL-DEVICE SMOKE TEST: toggle airplane mode mid-session; verify the client reconnects, buffered audio is replayed, and the transcript continues without duplicated text (a gap marker appears only if the buffer cap is exceeded)
 - [x] 6.4 PHYSICAL-DEVICE SMOKE TEST: with the app not exempt from battery optimization, verify the sanity-check prompt appears and deep-links to the system battery settings; after granting the exemption, verify no prompt appears
 - [x] 6.5 PHYSICAL-DEVICE SMOKE TEST: force the post-session pass to fail (airplane mode during the pass); verify the provisional transcript is preserved, the error state explains the failure, and retry succeeds once the network is back
