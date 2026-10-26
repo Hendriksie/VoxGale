@@ -24,12 +24,14 @@ int get _wavBytesPerSecond =>
 /// Size of the RIFF/WAVE header [WavFileWriter] writes before the audio data.
 const int _wavHeaderBytes = 44;
 
-/// The audio duration of the session WAV at [path], in seconds: the data
-/// bytes (the 44-byte header excluded) divided by the byte rate.
-Future<double> wavAudioDurationSeconds(String path) async {
-  final dataBytes = max(0, await File(path).length() - _wavHeaderBytes);
-  return dataBytes / _wavBytesPerSecond;
-}
+/// The audio duration of [dataBytes] of session WAV data (the 44-byte
+/// header excluded), in seconds.
+double wavAudioSecondsFromBytes(int dataBytes) =>
+    max(0, dataBytes - _wavHeaderBytes) / _wavBytesPerSecond;
+
+/// The audio duration of the session WAV at [path], in seconds.
+Future<double> wavAudioDurationSeconds(String path) async =>
+    wavAudioSecondsFromBytes(await File(path).length());
 
 /// The outcome of a successful diarization pass.
 class DiarizationPassResult {
@@ -103,6 +105,12 @@ class DiarizationPass {
         fileName: '$sessionId.wav',
         diarize: true,
         language: language,
+        // The client bounds a stalled call proportionally to the audio
+        // length — the pass must fail, never hang forever.
+        audioDuration: Duration(
+          milliseconds:
+              (wavAudioSecondsFromBytes(audioBytes.length) * 1000).round(),
+        ),
       ),
     );
     final segments = <StoredSegment>[

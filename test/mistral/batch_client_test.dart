@@ -242,4 +242,97 @@ void main() {
       ),
     );
   });
+
+  group('timeouts', () {
+    test('the production dio options carry finite connect and send timeouts',
+        () {
+      final options = DioBatchTranscriptionClient.defaultBaseOptions(
+        Uri(scheme: 'https', host: 'api.mistral.ai'),
+      );
+      expect(options.connectTimeout, const Duration(seconds: 15));
+      expect(options.sendTimeout, const Duration(minutes: 5));
+    });
+
+    test('receiveTimeoutFor is proportional to the audio duration with a '
+        'floor', () {
+      // Unknown duration: the fixed default.
+      expect(
+        DioBatchTranscriptionClient.receiveTimeoutFor(null),
+        const Duration(minutes: 10),
+      );
+      // Short audio: the floor applies.
+      expect(
+        DioBatchTranscriptionClient.receiveTimeoutFor(
+            const Duration(seconds: 5)),
+        const Duration(seconds: 60),
+      );
+      // Twice the audio length, once past the floor.
+      expect(
+        DioBatchTranscriptionClient.receiveTimeoutFor(
+            const Duration(minutes: 5)),
+        const Duration(minutes: 10),
+      );
+      expect(
+        DioBatchTranscriptionClient.receiveTimeoutFor(
+            const Duration(minutes: 30)),
+        const Duration(minutes: 60),
+      );
+    });
+
+    test('the request receive timeout reaches the dio call', () async {
+      final dio = MockDio();
+      when(
+        () => dio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<dynamic>(
+          requestOptions: RequestOptions(path: '/v1/audio/transcriptions'),
+          data: responseData,
+          statusCode: 200,
+        ),
+      );
+
+      final client = DioBatchTranscriptionClient(apiKey: 'test-key', dio: dio);
+      await client.transcribe(BatchTranscriptionRequest(
+        model: 'voxtral-mini-transcribe-3-0',
+        audioBytes: Uint8List.fromList([1, 2, 3]),
+        fileName: 'meeting.wav',
+        audioDuration: const Duration(minutes: 30),
+      ));
+
+      final (_, options) = captureRequest(dio);
+      expect(options.receiveTimeout, const Duration(minutes: 60));
+    });
+
+    test('a request without a duration gets the fixed default receive '
+        'timeout', () async {
+      final dio = MockDio();
+      when(
+        () => dio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<dynamic>(
+          requestOptions: RequestOptions(path: '/v1/audio/transcriptions'),
+          data: responseData,
+          statusCode: 200,
+        ),
+      );
+
+      final client = DioBatchTranscriptionClient(apiKey: 'test-key', dio: dio);
+      await client.transcribe(BatchTranscriptionRequest(
+        model: 'voxtral-mini-transcribe-3-0',
+        audioBytes: Uint8List.fromList([1, 2, 3]),
+        fileName: 'meeting.wav',
+      ));
+
+      final (_, options) = captureRequest(dio);
+      expect(options.receiveTimeout, const Duration(minutes: 10));
+    });
+  });
 }

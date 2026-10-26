@@ -151,6 +151,9 @@ void main() {
       expect(request!.fileName, 'session-1.wav');
       expect(request!.audioBytes, audioBytes);
       expect(request!.language, 'en');
+      // The request carries the audio duration so the client can bound a
+      // stalled call (30 s of audio data → 30 s).
+      expect(request!.audioDuration, const Duration(seconds: 30));
       // The transcript is replaced and the session marked final with the
       // pass's billed totals.
       expect(replacedId, 'session-1');

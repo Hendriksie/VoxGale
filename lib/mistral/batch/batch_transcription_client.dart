@@ -22,6 +22,7 @@ class BatchTranscriptionRequest {
     this.contextBias = const [],
     this.speakerReferences = const {},
     this.returnLanguage = false,
+    this.audioDuration,
   });
 
   /// Batch model ID (Mini or Small Transcribe 3).
@@ -49,6 +50,11 @@ class BatchTranscriptionRequest {
 
   /// Ask the API to report the detected language in the response.
   final bool returnLanguage;
+
+  /// The audio's duration, when the caller knows it. The client uses it to
+  /// bound the request's receive timeout proportionally to the audio length,
+  /// so a stalled call fails instead of hanging forever.
+  final Duration? audioDuration;
 }
 
 /// The result of a batch transcription.

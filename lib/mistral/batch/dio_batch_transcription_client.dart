@@ -21,10 +21,45 @@ class DioBatchTranscriptionClient implements BatchTranscriptionClient {
     Dio? dio,
     Uri? baseUri,
   })  : _apiKey = apiKey,
-        _dio = dio ??
-            Dio(BaseOptions(baseUrl: (baseUri ?? _defaultBaseUri).toString()));
+        _dio = dio ?? Dio(defaultBaseOptions(baseUri ?? _defaultBaseUri));
 
   static final Uri _defaultBaseUri = Uri(scheme: 'https', host: 'api.mistral.ai');
+
+  /// The production dio options: finite connect/send timeouts. Without
+  /// them a batch call can wait forever — a stalled response left the
+  /// post-session pass spinning indefinitely (found by on-device testing).
+  static BaseOptions defaultBaseOptions(Uri baseUri) => BaseOptions(
+        baseUrl: baseUri.toString(),
+        connectTimeout: defaultConnectTimeout,
+        sendTimeout: defaultSendTimeout,
+      );
+
+  /// Timeout for establishing the connection.
+  static const Duration defaultConnectTimeout = Duration(seconds: 15);
+
+  /// Timeout for sending the request (the audio upload dominates it).
+  static const Duration defaultSendTimeout = Duration(minutes: 5);
+
+  /// Receive timeout when the request carries no
+  /// [BatchTranscriptionRequest.audioDuration].
+  static const Duration defaultReceiveTimeout = Duration(minutes: 10);
+
+  /// The smallest receive timeout: even a few seconds of audio get a full
+  /// minute before a stalled response is treated as a timeout.
+  static const Duration receiveTimeoutFloor = Duration(seconds: 60);
+
+  /// The receive timeout for a request: proportional to the audio duration
+  /// (batch transcription is faster than realtime, so twice the audio
+  /// length is generous), floored at [receiveTimeoutFloor]; the fixed
+  /// [defaultReceiveTimeout] when the duration is unknown.
+  static Duration receiveTimeoutFor(Duration? audioDuration) {
+    final duration = audioDuration;
+    if (duration == null) {
+      return defaultReceiveTimeout;
+    }
+    final doubled = duration * 2;
+    return doubled < receiveTimeoutFloor ? receiveTimeoutFloor : doubled;
+  }
 
   final String _apiKey;
   final Dio _dio;
@@ -74,6 +109,7 @@ class DioBatchTranscriptionClient implements BatchTranscriptionClient {
         data: form,
         options: Options(
           headers: {'Authorization': 'Bearer $_apiKey'},
+          receiveTimeout: receiveTimeoutFor(request.audioDuration),
         ),
       );
       final data = response.data;
