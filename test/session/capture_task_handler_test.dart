@@ -91,13 +91,20 @@ void main() {
     expect(condition(), isTrue);
   }
 
-  CaptureTaskHandler createHandler() => CaptureTaskHandler(
+  CaptureTaskHandler createHandler({
+    Duration notificationInterval = const Duration(hours: 1),
+  }) =>
+      CaptureTaskHandler(
         transport: transport,
         apiKeyStore: apiKeyStore,
         clientFactory: (_) => client,
         recorderFactory: () => recorder,
         wavFactory: (_) async => wav,
         audioPathFor: (_) async => '/docs/sessions/session-1.wav',
+        // The periodic timer never fires in tests — the immediate start /
+        // pause / resume updates are what the other tests assert. The
+        // live-timer test injects a short interval.
+        notificationInterval: notificationInterval,
       );
 
   Future<void> startHandler(CaptureTaskHandler handler) async {
@@ -284,6 +291,22 @@ void main() {
     // The realtime session is still open: audio keeps flowing.
     audioController.add(Uint8List.fromList([9]));
     verify(() => session.sendAudio(any())).called(1);
+
+    handler.onReceiveData('stop');
+    await waitFor(() => transport.stopServiceCalls == 1);
+  });
+
+  test('the notification timer refreshes the elapsed time while running '
+      '(live timer)', () async {
+    final handler = createHandler(
+      notificationInterval: const Duration(milliseconds: 20),
+    );
+    await startHandler(handler);
+
+    // The start update, then the periodic timer keeps refreshing the
+    // elapsed time — a live timer in the persistent notification.
+    await waitFor(() => transport.notificationTexts.length >= 2);
+    expect(transport.notificationTexts.last, startsWith('Transcribing · '));
 
     handler.onReceiveData('stop');
     await waitFor(() => transport.stopServiceCalls == 1);

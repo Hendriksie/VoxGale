@@ -88,7 +88,7 @@ class CaptureTaskHandler extends TaskHandler {
     AudioRecorder Function()? recorderFactory,
     Future<WavFileWriter> Function(String path)? wavFactory,
     Future<String> Function(String sessionId)? audioPathFor,
-    this.notificationInterval = const Duration(seconds: 30),
+    this.notificationInterval = const Duration(seconds: 1),
   })  : _transport = transport ?? ForegroundTaskTransport(),
         _apiKeyStore = apiKeyStore ?? SecureStorageApiKeyStore(),
         _clientFactory = clientFactory ?? _defaultClientFactory,
@@ -97,6 +97,9 @@ class CaptureTaskHandler extends TaskHandler {
         _audioPathFor = audioPathFor ?? defaultAudioPath;
 
   /// How often the notification's elapsed time is refreshed while running.
+  /// Every second: the notification is a live timer (the spec requires the
+  /// elapsed session time to be displayed; the update cost is negligible
+  /// next to the active mic + WebSocket).
   final Duration notificationInterval;
 
   static RealtimeTranscriptionClient _defaultClientFactory(String apiKey) =>
