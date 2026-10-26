@@ -67,7 +67,7 @@ The estimate is `duration × MistralConfig.rateForModel(selectedModel) / 60`, sh
 
 ### P2-D6 — History UI and export
 
-`lib/app/history_screen.dart` (list newest-first with date, duration, source, model + a search field) and `lib/app/history_detail_screen.dart` (metadata header, the speaker-labelled transcript via `transcript_widgets.dart`, actions: export, delete; plus the pass re-offer when applicable). Export builds plain text or Markdown from the stored segments (format chosen in a small bottom sheet), writes it to a temp file (`path_provider`, already a direct dependency), and shares it via `share_plus`'s share sheet. Delete (with confirmation) and delete-all reuse the repository; deleting a session removes its audio file.
+`lib/app/history_screen.dart` (list newest-first with date, duration, source, model + a search field) and `lib/app/history_detail_screen.dart` (metadata header, the speaker-labelled transcript via `transcript_widgets.dart`, actions: export, delete; plus the pass re-offer when applicable). Export builds plain text or Markdown from the stored segments (format chosen in a small bottom sheet), writes it to a temp file in the system temp directory (the app cache dir on Android — no platform channel, so the flow is testable off-device), and shares it via `share_plus`'s share sheet. Delete (with confirmation) and delete-all reuse the repository; deleting a session removes its audio file.
 
 *Rationale:* `share_plus` is the standard share-sheet plugin; generating the file ourselves keeps the export content testable without platform channels.
 

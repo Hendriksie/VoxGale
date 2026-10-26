@@ -13,6 +13,8 @@ import '../storage/storage.dart';
 import 'capture_service.dart';
 import 'diarization_pass.dart';
 import 'file_transcription_controller.dart';
+import 'history_detail_controller.dart';
+import 'history_search_query.dart';
 import 'live_session_controller.dart';
 import 'settings_controller.dart';
 
@@ -81,13 +83,17 @@ final batchTranscriptionClientProvider =
   return DioBatchTranscriptionClient(apiKey: key);
 });
 
-/// The post-session diarization pass (design P1-D5).
+/// The post-session diarization pass (design P1-D5, P2-D7): transcribes with
+/// the configured default batch model preference (the pinned Mini model
+/// unless the user changed it in settings).
 final diarizationPassProvider = FutureProvider<DiarizationPass>((ref) async {
   final client = await ref.watch(batchTranscriptionClientProvider.future);
+  final model = await ref.watch(defaultBatchModelProvider.future);
   return DiarizationPass(
     client: client,
     repository: ref.watch(sessionRepositoryProvider),
     config: ref.watch(mistralConfigProvider),
+    model: model,
   );
 });
 
@@ -126,3 +132,24 @@ final audioDurationProberProvider =
 final fileTranscriptionControllerProvider =
     NotifierProvider<FileTranscriptionController, FileTranscriptionState>(
         FileTranscriptionController.new);
+
+/// The history screen's search query (transcript-history spec: search by
+/// text content).
+final historySearchQueryProvider =
+    NotifierProvider<HistorySearchQuery, String>(HistorySearchQuery.new);
+
+/// The saved sessions for the history list, newest first, filtered by the
+/// search query (transcript-history spec).
+final historyListProvider = FutureProvider<List<StoredSession>>((ref) async {
+  final query = ref.watch(historySearchQueryProvider);
+  return ref
+      .read(sessionRepositoryProvider)
+      .listSessions(searchQuery: query.isEmpty ? null : query);
+});
+
+/// The history detail controller for one session (design P2-D6/D7), keyed by
+/// session id; auto-disposed when its screen is popped.
+final historyDetailControllerProvider = NotifierProvider.autoDispose.family<
+    HistoryDetailController, HistoryDetailState, String>(
+  HistoryDetailController.new,
+);

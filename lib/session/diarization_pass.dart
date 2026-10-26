@@ -53,7 +53,7 @@ class DiarizationPassResult {
   /// Audio seconds billed by the pass — the pass's billed quantity.
   final int billedAudioSeconds;
 
-  /// The pass's actual cost in USD (billed seconds × the batch Mini rate).
+  /// The pass's actual cost in USD (billed seconds × the pass's model rate).
   final double actualCost;
 
   /// The language reported by the batch API, when reported.
@@ -70,22 +70,31 @@ class DiarizationPass {
     required this.client,
     required this.repository,
     required this.config,
+    this.model,
   });
 
   final BatchTranscriptionClient client;
   final SessionRepository repository;
   final MistralConfig config;
 
+  /// The batch model the pass transcribes with (design P2-D7): the settings
+  /// preference when wired through the providers, defaulting to the pinned
+  /// batch Mini model.
+  final String? model;
+
+  /// The model the pass transcribes with.
+  String get _model => model ?? config.batchMiniModel;
+
   /// The estimated cost of running the pass on the session audio at
   /// [audioPath]: the audio's duration times the configured per-minute rate
-  /// of the batch Mini model the pass uses (cost-indicator spec).
+  /// of the model the pass will use (cost-indicator spec).
   Future<double> estimateCost(String audioPath) async {
     final seconds = await wavAudioDurationSeconds(audioPath);
-    return seconds / 60 * config.batchMiniRatePerMinute;
+    return seconds / 60 * config.rateForModel(_model);
   }
 
   /// Runs the pass on the saved session audio: transcribes it with
-  /// `diarize=true` and the batch Mini model, replaces the session's
+  /// `diarize=true` and the pass's model, replaces the session's
   /// provisional transcript with the speaker-labelled segments (persisted,
   /// marking the session final and recording the pass's billed totals), and
   /// deletes the audio file. Resolves with the outcome; throws — leaving the
@@ -100,7 +109,7 @@ class DiarizationPass {
     final audioBytes = await File(audioPath).readAsBytes();
     final result = await client.transcribe(
       BatchTranscriptionRequest(
-        model: config.batchMiniModel,
+        model: _model,
         audioBytes: audioBytes,
         fileName: '$sessionId.wav',
         diarize: true,
@@ -125,7 +134,7 @@ class DiarizationPass {
         ),
     ];
     final billedAudioSeconds = result.usage.promptAudioSeconds ?? 0;
-    final actualCost = billedAudioSeconds / 60 * config.batchMiniRatePerMinute;
+    final actualCost = billedAudioSeconds / 60 * config.rateForModel(_model);
     await repository.replaceTranscript(
       sessionId,
       segments,

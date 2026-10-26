@@ -32,6 +32,18 @@ class FakeApiKeyStore implements ApiKeyStore {
   Future<void> deleteKey() async => key = null;
 }
 
+class InMemoryPreferencesRepository implements PreferencesRepository {
+  StoredPreferences stored = const StoredPreferences();
+
+  @override
+  Future<StoredPreferences> loadPreferences() async => stored;
+
+  @override
+  Future<void> savePreferences(StoredPreferences preferences) async {
+    stored = preferences;
+  }
+}
+
 /// Deterministic [SessionClock]: the test advances time and fires ticks.
 class FakeSessionClock implements SessionClock {
   FakeSessionClock() : nowValue = DateTime(2026, 10, 23, 10, 0, 0);
@@ -254,6 +266,10 @@ void main() {
       overrides: [
         captureServiceProvider.overrideWith((ref) => captureService),
         sessionRepositoryProvider.overrideWith((ref) => repository),
+        // The diarization pass provider resolves the default batch model
+        // through the preferences chain (design P2-D7) — keep it in memory.
+        preferencesRepositoryProvider.overrideWith(
+            (ref) => InMemoryPreferencesRepository()),
         mistralConfigProvider.overrideWith((ref) => MistralConfig.defaults),
         apiKeyStoreProvider.overrideWith((ref) => apiKeyStore),
         batchTranscriptionClientProvider.overrideWith((ref) async => batchClient),

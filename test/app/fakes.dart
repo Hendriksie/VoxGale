@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voxtral_live/main.dart';
 import 'package:voxtral_live/mistral/mistral.dart';
 import 'package:voxtral_live/session/file_transcription_controller.dart';
+import 'package:voxtral_live/session/history_detail_controller.dart';
 import 'package:voxtral_live/session/live_session_controller.dart';
 import 'package:voxtral_live/session/session_providers.dart';
 import 'package:voxtral_live/storage/storage.dart';
@@ -122,6 +123,118 @@ class FakeFileTranscriptionController extends FileTranscriptionController {
   @override
   Future<void> transcribe() async {
     calls.add('transcribe');
+  }
+}
+
+/// In-memory [SessionRepository] for widget tests (design P2-D3/D6): keeps
+/// the records in a map; list is newest-first and search matches segment
+/// text. Audio files are not touched (the re-offer's file-existence check
+/// uses real temp files in the tests that need them).
+class InMemorySessionRepository implements SessionRepository {
+  final Map<String, StoredSessionRecord> records = {};
+
+  /// Saves a session with its segments (test helper).
+  void add(StoredSession session, List<StoredSegment> segments) {
+    records[session.id] = StoredSessionRecord(session: session, segments: segments);
+  }
+
+  @override
+  Future<void> saveSession(
+    StoredSession session,
+    List<StoredSegment> segments,
+  ) async {
+    add(session, segments);
+  }
+
+  @override
+  Future<StoredSessionRecord?> loadSession(String id) async => records[id];
+
+  @override
+  Future<void> replaceTranscript(
+    String sessionId,
+    List<StoredSegment> segments, {
+    required int billedAudioSeconds,
+    required double actualCost,
+  }) async {
+    final record = records[sessionId];
+    if (record == null) {
+      throw ArgumentError.value(sessionId, 'sessionId', 'Unknown session id');
+    }
+    final session = record.session;
+    records[sessionId] = StoredSessionRecord(
+      session: StoredSession(
+        id: session.id,
+        startedAt: session.startedAt,
+        durationSeconds: session.durationSeconds,
+        model: session.model,
+        status: SessionStatus.finalized,
+        billedAudioSeconds: billedAudioSeconds,
+        actualCost: actualCost,
+        language: session.language,
+        audioPath: session.audioPath,
+        source: session.source,
+        sourceFileName: session.sourceFileName,
+      ),
+      segments: segments,
+    );
+  }
+
+  @override
+  Future<void> deleteSession(String id) async {
+    records.remove(id);
+  }
+
+  @override
+  Future<List<StoredSession>> listSessions({String? searchQuery}) async {
+    final query = searchQuery?.trim() ?? '';
+    final sessions = records.values.map((r) => r.session).toList()
+      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    if (query.isEmpty) {
+      return sessions;
+    }
+    return sessions
+        .where((s) => records[s.id]!
+            .segments.any((segment) => segment.text.contains(query)))
+        .toList();
+  }
+
+  @override
+  Future<void> deleteAllSessions() async {
+    records.clear();
+  }
+
+  @override
+  Future<void> close() async {}
+}
+
+/// A [HistoryDetailController] test double: [build] returns the fixed,
+/// settable state (no repository, pass, or file IO is touched), and the
+/// action methods record their calls in [calls].
+class FakeHistoryDetailController extends HistoryDetailController {
+  FakeHistoryDetailController(super.sessionId, [HistoryDetailState? initial])
+      : _state = initial ?? const HistoryDetailState();
+
+  final HistoryDetailState _state;
+
+  /// The action calls, in order ('runPass', 'delete').
+  final List<String> calls = [];
+
+  @override
+  HistoryDetailState build() => _state;
+
+  /// Replaces the rendered state (a test drives the screen through states).
+  void setState(HistoryDetailState value) {
+    state = value;
+  }
+
+  @override
+  Future<void> runPass() async {
+    calls.add('runPass');
+  }
+
+  @override
+  Future<void> delete() async {
+    calls.add('delete');
   }
 }
 

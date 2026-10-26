@@ -239,4 +239,54 @@ void main() {
       expect(await File(path).exists(), isFalse);
     });
   });
+
+  group('model parameter (design P2-D7: the settings preference applies)',
+      () {
+    test('estimateCost uses the configured rate of the pass model', () async {
+      final smallPass = DiarizationPass(
+        client: client,
+        repository: repository,
+        config: config,
+        model: config.batchSmallModel,
+      );
+      final path = await writeWav('small-estimate.wav', 32000 * 60);
+
+      // 60 s / 60 × 0.004 USD/min (the Small rate).
+      expect(await smallPass.estimateCost(path), closeTo(0.004, 1e-9));
+    });
+
+    test('run transcribes with the pass model and bills at its rate', () async {
+      final smallPass = DiarizationPass(
+        client: client,
+        repository: repository,
+        config: config,
+        model: config.batchSmallModel,
+      );
+      final path = await writeWav('small-run.wav', 32000 * 30);
+      BatchTranscriptionRequest? request;
+      when(() => client.transcribe(any())).thenAnswer((invocation) async {
+        request =
+            invocation.positionalArguments[0] as BatchTranscriptionRequest;
+        return const BatchTranscriptionResult(
+          text: 'Hi',
+          segments: [],
+          language: 'en',
+          model: 'voxtral-small-transcribe-3-0',
+          usage: Usage(promptAudioSeconds: 30),
+        );
+      });
+      stubReplaceTranscript();
+
+      final result = await smallPass.run(
+        sessionId: 'session-3',
+        audioPath: path,
+      );
+
+      expect(request!.model, config.batchSmallModel);
+      expect(
+        result.actualCost,
+        closeTo(30 / 60 * config.batchSmallRatePerMinute, 1e-12),
+      );
+    });
+  });
 }
