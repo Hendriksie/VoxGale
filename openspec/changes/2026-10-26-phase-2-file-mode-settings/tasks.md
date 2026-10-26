@@ -34,8 +34,8 @@
 
 ## 6. Navigation (design P2-D8)
 
-- [ ] 6.1 Add file-mode, history, and settings actions to the live session screen's app bar (imperative `MaterialPageRoute` pushes, matching the existing style); keep the `kDebugMode`-gated debug action; verify with a widget test (actions present, each pushes the right screen).
-- [ ] 6.2 Show a missing-key state with an open-settings action at the file-mode entry when no API key is saved (settings spec); verify with a widget test.
+- [x] 6.1 Add file-mode, history, and settings actions to the live session screen's app bar (imperative `MaterialPageRoute` pushes, matching the existing style); keep the `kDebugMode`-gated debug action; verify with a widget test (actions present, each pushes the right screen).
+- [x] 6.2 Show a missing-key state with an open-settings action at the file-mode entry when no API key is saved (settings spec); verify with a widget test.
 
 ## 7. Integration checks
 

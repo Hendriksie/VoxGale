@@ -13,7 +13,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../session/live_session_controller.dart';
 import '../session/session_providers.dart';
 import 'debug_hub_screen.dart';
+import 'file_transcription_screen.dart';
 import 'formatters.dart';
+import 'history_screen.dart';
+import 'settings_screen.dart';
 import 'theme.dart';
 import 'transcript_widgets.dart';
 
@@ -41,6 +44,33 @@ class LiveSessionScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Transcribe a file',
+            icon: const Icon(Icons.audio_file_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const FileTranscriptionScreen(),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'History',
+            icon: const Icon(Icons.history),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const HistoryScreen(),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const SettingsScreen(),
+              ),
+            ),
+          ),
           if (kDebugMode)
             IconButton(
               tooltip: 'Debug menu',
@@ -59,7 +89,15 @@ class LiveSessionScreen extends ConsumerWidget {
             _StatusRow(state: state),
             if (state.batteryPromptNeeded)
               _BatteryPromptBanner(onOpenSettings: controller.openBatterySettings),
-            if (state.hasError) _ErrorBanner(state: state),
+            if (state.hasError)
+              _ErrorBanner(
+                state: state,
+                onOpenSettings: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                ),
+              ),
             Expanded(
               child: TranscriptView(
                 turns: state.turns,
@@ -200,10 +238,13 @@ class _ConnectionChip extends StatelessWidget {
 /// The error surface: a fatal error card in the error phase; a slim warning
 /// row for a transient error while the session runs. The API key is never
 /// displayed — only saved/not-saved states (and never the value itself).
+/// A missing key gets an open-settings action (the settings screen owns key
+/// entry since Phase 2 — the debug-only entry is gone).
 class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.state});
+  const _ErrorBanner({required this.state, required this.onOpenSettings});
 
   final LiveSessionState state;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -239,14 +280,12 @@ class _ErrorBanner extends StatelessWidget {
                         color: onContainerColor,
                       ),
                     ),
-                    if (fatal && state.missingApiKey && kDebugMode)
+                    if (fatal && state.missingApiKey)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Add your key via the debug menu (debug builds only).',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: onContainerColor,
-                          ),
+                        child: TextButton(
+                          onPressed: onOpenSettings,
+                          child: const Text('Open settings'),
                         ),
                       ),
                   ],

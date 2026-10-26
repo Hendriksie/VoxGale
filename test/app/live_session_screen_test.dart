@@ -325,7 +325,10 @@ void main() {
       ));
 
       expect(find.textContaining('No API key saved'), findsOneWidget);
-      expect(find.textContaining('debug menu'), findsOneWidget);
+      // Phase 2: the missing-key banner offers the settings screen (the
+      // debug-only key entry is gone).
+      expect(find.text('Open settings'), findsOneWidget);
+      expect(find.textContaining('debug menu'), findsNothing);
       // The key value itself is never rendered.
       expect(find.textContaining('sk-'), findsNothing);
     });
