@@ -8,8 +8,8 @@
 
 ## 2. Machine-independent Gradle config (design P4-D2)
 
-- [ ] 2.1 Move `org.gradle.java.home` out of the committed `android/gradle.properties` into the user-level `~/.gradle/gradle.properties` (create it with the same JDK 17 path); verify a debug build still succeeds locally and `git diff` shows the line removed from the committed file.
-- [ ] 2.2 Verify a clean checkout builds: `git worktree add` a fresh checkout to a temp directory and run `flutter build apk --debug` there (uses the user-level JDK pointer, not the committed file); verify the build succeeds and the worktree is removed afterwards.
+- [x] 2.1 Move `org.gradle.java.home` out of the committed `android/gradle.properties` into the user-level `~/.gradle/gradle.properties` (create it with the same JDK 17 path); verify a debug build still succeeds locally and `git diff` shows the line removed from the committed file. (Verified: user-level file created with the JDK 17 pointer; committed file now carries a do-not-commit note; local debug build succeeds.)
+- [x] 2.2 Verify a clean checkout builds: `git worktree add` a fresh checkout to a temp directory and run `flutter build apk --debug` there (uses the user-level JDK pointer, not the committed file); verify the build succeeds and the worktree is removed afterwards. (Verified: detached worktree at master built `app-debug.apk` successfully with ANDROID_SDK_ROOT set; the Flutter tool self-heals the gitignored Gradle wrapper from the committed gradle-wrapper.properties, so CI builds the same way; worktree removed.)
 
 ## 3. Spike/debug harness removal (design P4-D3)
 
