@@ -35,9 +35,9 @@
 
 ## 7. Integration checks
 
-- [ ] 7.1 Run `openspec validate --strict` for this change; verify it passes.
-- [ ] 7.2 Run `flutter analyze` and the full `flutter test` suite; verify both are clean (no test hits the live API).
-- [ ] 7.3 Tick the "Dogfood for 2–4 weeks; keep a friction list" item in `project-plan.md` (the window ran and the list exists); leave the v1.1 item open as the follow-up change; verify the checkboxes.
+- [x] 7.1 Run `openspec validate --strict` for this change; verify it passes. (Verified: change valid under --strict; main specs 9/9 under --specs --strict.)
+- [x] 7.2 Run `flutter analyze` and the full `flutter test` suite; verify both are clean (no test hits the live API). (Verified: analyze — no issues; 344/344 tests passed.)
+- [ ] 7.3 Tick the "Dogfood for 2–4 weeks; keep a friction list" item in `project-plan.md` (the window ran and the list exists); leave the v1.1 item open as the follow-up change; verify the checkboxes. (PENDING the dogfood window: the list exists and the window started 2026-10-28; the item is ticked when the window closes, together with the archive.)
 
 ## Workflow follow-up
 
