@@ -127,7 +127,7 @@ Practical v1 simplification for live mode: show the raw live text as it streams 
 - [x] Empty/error states (no key, no mic permission, no network, API errors, quota)
 - [x] Audio focus handling (don't capture during phone calls; respect other media apps)
 - [x] Unit tests on the WebSocket/REST layer with mocks; one integration test of the live flow
-- [ ] Wake-lock + battery review for long sessions; app icon in orange *(wake lock + app icon implemented; battery measurement and on-device verification pending a physical device — see the change's battery-review.md and tasks 6.3/6.4)*
+- [x] Wake-lock + battery review for long sessions; app icon in orange
 
 ### Phase 4 — Ship & iterate *(ongoing, guilt-free)*
 - [ ] Dogfood for 2–4 weeks; keep a friction list

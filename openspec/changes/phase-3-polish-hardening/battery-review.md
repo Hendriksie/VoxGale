@@ -9,30 +9,23 @@ The Phase 3 plan item "Wake-lock + battery review for long sessions": confirm th
 - `android.permission.WAKE_LOCK` is declared in `android/app/src/main/AndroidManifest.xml` and present in the built debug APK (`aapt dump badging`).
 - `allowWakeLock: true` is set explicitly in `ForegroundTaskOptions` in `lib/main.dart`.
 - `flutter_foreground_task` 11.0.3 acquires a `PARTIAL_WAKE_LOCK` (`ForegroundService:WakeLock`, reference-counting off) in `acquireLockMode()` while the service runs and releases it in `releaseLockMode()` when the service stops — the lock is held exactly for the session duration, matching the new `live-transcription` spec requirement (no wake lock when no session is active).
-- Consequence: before this change the acquire could not succeed (no permission); screen-off sessions relied on the foreground service alone for CPU wakefulness. Now the wake lock engages.
 
-## Measurement protocol (pending — requires a physical device)
+## On-device measurement (done, 2026-10-27 — Pixel 9 Pro XL, Android 15 / API 37, GrapheneOS)
 
-Setup: physical Android device connected over adb (`~/Android/Sdk/platform-tools/adb`), the app installed from the debug APK (`build/app/outputs/flutter-apk/app-debug.apk`), battery ≥ 80%, the battery-optimization exemption granted (the app prompts for it at session start), no other heavy load on the device.
+Setup: debug APK installed; the app added to the doze whitelist (`dumpsys deviceidle whitelist +dev.hendriksie.voxtral_live`) so no battery-exemption prompt appeared and Doze could not interfere; phone discharging over ADB-USB (not charging); no other load.
 
-1. Record battery level and time: `adb shell dumpsys battery | grep level`.
-2. Start a live session in the app, turn the screen off, let it run 30+ minutes.
-3. During the session, verify the wake lock is held: `adb shell dumpsys power | grep -i wakelock` — expect `ForegroundService:WakeLock` (PARTIAL) held.
-4. Stop the session; verify the lock is released (same `dumpsys power` — the lock is gone).
-5. Record battery level and time again; compute the % drain and the %/hour rate.
-6. Optional: repeat on a second day for a sanity range.
+- **Session:** 18:58:32 → 19:29:52 local (31:20 wall). Screen off from 18:58:35 to 19:29:03 (~30:28).
+- **Capture continuity:** the session WAV grew at 32 kB/s (PCM16, 16 kHz, mono) for the entire session — 60,103,724 bytes ≈ 31:18 of audio at stop. The 30-minute screen-off session survived; the transcript streamed throughout.
+- **Battery:** 68% at 18:58:32 → 65% at 19:28:49 (30:17 elapsed). **Drain: 3% ≈ 152 mAh ≈ ~300 mA average ≈ 5.9%/hour** screen-off (capture + continuous realtime WebSocket streaming + wake lock).
+- **Wake lock:** `PARTIAL_WAKE_LOCK 'ForegroundService:WakeLock'` (uid 10306, our app) verified held at session start, mid-session, and at the 30-minute mark (`ACQ=-30m22s` at 19:28:49) with the screen off (`mWakefulness=Asleep`). After Stop: no `ForegroundService` wake lock and the FGS stopped — **released exactly when the session ended**, as the spec requires.
+- **Foreground service:** microphone type (`0x80`), `isForeground=true` throughout; persistent notification present (channel `voxtral_live_capture`, `ONGOING_EVENT|NO_CLEAR|FOREGROUND_SERVICE`, Stop action).
+- **Reconnect observation (bonus):** the realtime stream dropped once during the screen-off session and the Phase-1 reconnect path handled it — the status chip showed "Reconnected · Replayed 702.7 s" (buffered audio replayed into the re-established stream), the session continued seamlessly, and it saved to history. The API billed 702 s ($0.094) against a live estimate of $0.247: with a drop+replay, captured-but-unbilled audio makes the live estimate an **upper bound**. Cost-indicator note, not a defect.
 
-## Findings (pending device measurement)
+## Recommendation
 
-- Battery before / after: _pending_
-- Drain rate (%/hour, screen off, active capture + realtime streaming): _pending_
-- Wake lock held during the session / released after stop: _pending on-device confirmation_ (statically verified above)
-
-## Recommendation (pending)
-
-This review feeds one decision: whether to build the "quality vs. battery" chunking setting from the risk table (§8). Once the numbers exist, record the recommendation here — if the screen-off drain rate is modest, the setting is not warranted for v1; if it is materially high, propose the chunking setting as a follow-up change.
+**Do not build the "quality vs. battery" chunking setting for v1.** At ≈ 6%/hour screen-off (~300 mA) on a flagship battery, a 2-hour session costs ≈ 12% — acceptable for an intentionally running transcription session where the user sees the persistent notification, elapsed time, and live cost estimate. The wake lock is held only while a session runs (verified released after stop), so idle drain is unaffected. Revisit if dogfooding on other devices (weaker radios, aggressive OEM battery management) shows materially worse drain, or if users report it.
 
 ## Related
 
-- The audio-focus pause/resume (group 3) and the shared empty/error states (group 2) are covered by unit/widget tests; their on-device behavior is part of the 6.3 smoke test in `tasks.md`.
-- The 6.3 smoke test also covers: a phone call mid-session (pause/resume), the wake-lock held/released check, and the on-device launcher-icon check.
+- The audio-focus pause/resume (group 3) and the shared empty/error states (group 2) are covered by unit/widget tests; their on-device behavior was verified in the 6.3 smoke test (see `tasks.md`).
+- Smoke-test findings that changed the implementation: (1) `record`'s internal focus request fought the audio-focus gateway — fixed with `audioInterruption: AudioInterruptionMode.none`; (2) the empty-transcript state now reads "No transcript yet." during a session instead of inviting to start one. Both are recorded in `design.md` (P3-D2, P3-D1) and the project KB gotchas.

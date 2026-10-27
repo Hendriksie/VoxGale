@@ -20,6 +20,7 @@ class TranscriptView extends StatefulWidget {
     required this.turns,
     required this.gapMarkers,
     this.autoScroll = false,
+    this.emptyMessage = 'Start a session to see the live transcript.',
   });
 
   /// The turn-grouped transcript (see [LiveSessionState.turns]).
@@ -30,6 +31,12 @@ class TranscriptView extends StatefulWidget {
 
   /// Whether to keep the view scrolled to the latest text.
   final bool autoScroll;
+
+  /// The empty state's message when there are no turns — the caller picks
+  /// the wording appropriate to its context (the live screen's idle state
+  /// invites starting a session; a session that has run simply has no
+  /// transcript yet).
+  final String emptyMessage;
 
   @override
   State<TranscriptView> createState() => _TranscriptViewState();
@@ -69,12 +76,13 @@ class _TranscriptViewState extends State<TranscriptView> {
   Widget build(BuildContext context) {
     final items = transcriptItems(widget.turns, widget.gapMarkers);
     if (items.isEmpty) {
-      // The idle empty-transcript state (empty-error-states spec): an
-      // invitation to start a session, not a blank area. The Start control
-      // sits in the screen's controls bar, right below.
-      return const EmptyStateView(
+      // The empty-transcript state (empty-error-states spec): guidance, not
+      // a blank area. The wording comes from [emptyMessage] — the live
+      // screen's idle state invites starting a session; a session that has
+      // run shows a plain "no transcript yet".
+      return EmptyStateView(
         icon: Icons.mic_none,
-        message: 'Start a session to see the live transcript.',
+        message: widget.emptyMessage,
       );
     }
     return ListView.builder(

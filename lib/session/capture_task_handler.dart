@@ -188,6 +188,16 @@ class CaptureTaskHandler extends TaskHandler {
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 16000,
         numChannels: 1,
+        // The audio-focus gateway (lib/session/audio_focus_gateway.dart) owns
+        // audio-focus management for the session. record's own focus request
+        // (its default AudioInterruptionMode.pause) would displace the
+        // gateway's request — observed on device: record's USAGE_MEDIA
+        // request stole focus from the gateway's USAGE_VOICE_COMMUNICATION
+        // request right after session start, producing a spurious focus loss
+        // that paused the session by itself. With NONE, record never requests
+        // focus; the gateway's events drive pause/resume through the command
+        // channel instead.
+        audioInterruption: AudioInterruptionMode.none,
       ));
 
       _sessionId = sessionId;

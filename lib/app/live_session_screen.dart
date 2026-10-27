@@ -104,6 +104,7 @@ class LiveSessionScreen extends ConsumerWidget {
                       turns: state.turns,
                       gapMarkers: state.gapMarkers,
                       autoScroll: state.phase == LiveSessionPhase.active,
+                      emptyMessage: _emptyTranscriptMessage(state.phase),
                     ),
             ),
             _PassSection(state: state, controller: controller),
@@ -112,6 +113,29 @@ class LiveSessionScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// The empty-transcript message for [phase] (empty-error-states spec): an
+/// invitation to start a session only when no session is in flight and the
+/// last one did not fail; once a session has run, the transcript area simply
+/// has no transcript yet — inviting to "start a session" mid-session or after
+/// one ended would be wrong.
+String _emptyTranscriptMessage(LiveSessionPhase phase) {
+  switch (phase) {
+    case LiveSessionPhase.idle:
+    case LiveSessionPhase.error:
+      return 'Start a session to see the live transcript.';
+    case LiveSessionPhase.starting:
+    case LiveSessionPhase.active:
+    case LiveSessionPhase.paused:
+    case LiveSessionPhase.stopping:
+    case LiveSessionPhase.finalizing:
+    case LiveSessionPhase.done:
+    case LiveSessionPhase.passOffered:
+    case LiveSessionPhase.passRunning:
+    case LiveSessionPhase.passFailed:
+      return 'No transcript yet.';
   }
 }
 

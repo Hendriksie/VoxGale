@@ -381,6 +381,20 @@ void main() {
       expect(find.text('Start'), findsOneWidget);
     });
 
+    testWidgets('the empty-transcript state during a session is not an '
+        'invitation to start one', (tester) async {
+      await pumpScreen(tester, const LiveSessionState(
+        phase: LiveSessionPhase.active,
+      ));
+
+      expect(find.byType(EmptyStateView), findsOneWidget);
+      expect(find.text('No transcript yet.'), findsOneWidget);
+      expect(
+        find.text('Start a session to see the live transcript.'),
+        findsNothing,
+      );
+    });
+
     testWidgets('the mic-permission-denied state re-requests the permission '
         'from its remedy action', (tester) async {
       final controller = FakeLiveSessionController(const LiveSessionState(
