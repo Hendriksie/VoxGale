@@ -90,15 +90,6 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  assets:
-    # Placeholder audio for the Phase-0 batch spike (task 5.1). Replace
-    # assets/spike/sample.wav with a real conversation recording for a
-    # meaningful diarization result.
-    - assets/spike/sample.wav
-    # Placeholder speaker reference clip (task 5.3). Replace with a 3-15 s
-    # recording of a real voice to get named-speaker labels.
-    - assets/spike/reference_tone.wav
-
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

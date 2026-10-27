@@ -1,10 +1,10 @@
 // Riverpod wiring for the live session (design P1-D7, tasks 4.1-4.4): the
 // pinned Mistral config, the API key store, the session repository, the
 // capture service, the post-session diarization pass, and the live session
-// controller. The config/key providers moved here from lib/spike/ (the spike
-// harness re-exports them). The API key is read only at client construction
-// (exactly like the spike harness) and injected only into the lib/mistral/
-// clients — it never reaches the controller or its state.
+// controller. The config/key providers moved here from the Phase-0 spike
+// harness (removed in Phase 4). The API key is read only at client
+// construction and injected only into the lib/mistral/ clients — it never
+// reaches the controller or its state.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

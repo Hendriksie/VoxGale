@@ -7,8 +7,8 @@ import 'dart:typed_data';
 /// on [close]. Writes are synchronous on purpose: chunks are small (~3 KB per
 /// 100 ms of audio) and their order is what makes the file valid.
 ///
-/// Moved from `lib/spike/` to `lib/session/` with the production capture
-/// service (task 3.1); the spike harness imports it from here.
+/// Moved from the Phase-0 spike harness (removed in Phase 4) to
+/// `lib/session/` with the production capture service (task 3.1).
 class WavFileWriter {
   WavFileWriter._(this._raf, this._path);
 

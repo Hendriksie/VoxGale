@@ -13,8 +13,8 @@
 
 ## 3. Spike/debug harness removal (design P4-D3)
 
-- [ ] 3.1 Delete `lib/spike/` (5 files), `lib/app/debug_hub_screen.dart`, `assets/spike/` (2 files), and `test/app/debug_hub_test.dart`; remove the debug route, app-bar action, and import from `lib/app/live_session_screen.dart`; remove the two spike asset entries from `pubspec.yaml`; verify `flutter analyze` is clean.
-- [ ] 3.2 Move the still-valid home-screen assertions from the deleted debug-hub test (the live session screen is home, no spike links on home) into `test/app/live_session_screen_test.dart` if not already covered there; verify the full `flutter test` suite passes.
+- [x] 3.1 Delete `lib/spike/` (5 files), `lib/app/debug_hub_screen.dart`, `assets/spike/` (2 files), and `test/app/debug_hub_test.dart`; remove the debug route, app-bar action, and import from `lib/app/live_session_screen.dart`; remove the two spike asset entries from `pubspec.yaml`; verify `flutter analyze` is clean. (Also fixed three stale comments referencing the harness in navigation_test.dart, session_providers.dart, wav_file_writer.dart. Verified: flutter analyze — no issues.)
+- [x] 3.2 Move the still-valid home-screen assertions from the deleted debug-hub test (the live session screen is home, no spike links on home) into `test/app/live_session_screen_test.dart` if not already covered there; verify the full `flutter test` suite passes. (Added a 'home chrome' group asserting the app bar carries exactly the three production actions and no debug menu / spike links / debug key entry. Verified: full flutter test — 344 tests, all passed.)
 - [ ] 3.3 Verify the release artifact is clean: `flutter build apk --release`, `unzip -l` on the APK shows no `assets/spike/` entries, and the installed release app (device; uninstall the debug build first) shows no debug menu; verify with one live session and one file transcription on the release build (device smoke — emulators lie about background capture).
 
 ## 4. README and privacy policy (design P4-D4)

@@ -1,9 +1,10 @@
 // Widget tests for the app navigation (task 6.1, design P2-D8): the live
 // session screen's app bar actions push the file transcription, history,
-// and settings screens (the debug action stays kDebugMode-gated), and the
-// missing-key error banner offers an open-settings action (the settings
-// screen owns key entry since Phase 2). The controller, repository,
-// preferences, and validator are test doubles — never real services.
+// and settings screens — and nothing else (the debug action and the spike
+// harness were removed in Phase 4). The missing-key error banner offers an
+// open-settings action (the settings screen owns key entry since Phase 2).
+// The controller, repository, preferences, and validator are test doubles
+// — never real services.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

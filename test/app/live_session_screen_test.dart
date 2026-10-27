@@ -580,6 +580,28 @@ void main() {
     });
   });
 
+  group('home chrome (Phase 4 group 3)', () {
+    testWidgets('the app bar carries only the production actions — no debug '
+        'menu, no spike links', (tester) async {
+      await pumpScreen(tester, const LiveSessionState());
+
+      // The three production actions, and nothing else.
+      expect(find.byTooltip('Transcribe a file'), findsOneWidget);
+      expect(find.byTooltip('History'), findsOneWidget);
+      expect(find.byTooltip('Settings'), findsOneWidget);
+      expect(find.byType(IconButton), findsNWidgets(3));
+
+      // The Phase-0 debug route and spike harness are gone for good (the
+      // assertions moved here from the deleted debug_hub_test.dart).
+      expect(find.byTooltip('Debug menu'), findsNothing);
+      expect(find.byIcon(Icons.bug_report_outlined), findsNothing);
+      expect(find.textContaining('Spike A'), findsNothing);
+      expect(find.textContaining('Spike B'), findsNothing);
+      expect(find.textContaining('Spike C'), findsNothing);
+      expect(find.text('API key (debug)'), findsNothing);
+    });
+  });
+
   testWidgets('renders in both themes', (tester) async {
     for (final mode in [ThemeMode.light, ThemeMode.dark]) {
       await pumpScreen(

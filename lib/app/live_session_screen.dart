@@ -8,13 +8,11 @@
 // provisional-vs-finalized styling and visible gap markers
 // (transcript_widgets.dart).
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../session/live_session_controller.dart';
 import '../session/session_providers.dart';
-import 'debug_hub_screen.dart';
 import 'error_states.dart';
 import 'file_transcription_screen.dart';
 import 'formatters.dart';
@@ -23,10 +21,9 @@ import 'settings_screen.dart';
 import 'theme.dart';
 import 'transcript_widgets.dart';
 
-/// The live session screen: the app's home in Phase 1 (design P1-D6). The
-/// spike harness and the debug-only API key entry live behind the debug-only
-/// route opened from the app bar's debug action (a `kDebugMode` const —
-/// release builds fold it out).
+/// The live session screen: the app's home (design P1-D6). The Phase-0 spike
+/// harness and its debug-only route were removed in Phase 4 — the app bar
+/// carries only the production actions (file transcription, history, settings).
 class LiveSessionScreen extends ConsumerWidget {
   const LiveSessionScreen({super.key});
 
@@ -74,16 +71,6 @@ class LiveSessionScreen extends ConsumerWidget {
               ),
             ),
           ),
-          if (kDebugMode)
-            IconButton(
-              tooltip: 'Debug menu',
-              icon: const Icon(Icons.bug_report_outlined),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const DebugHubScreen(),
-                ),
-              ),
-            ),
         ],
       ),
       body: SafeArea(
