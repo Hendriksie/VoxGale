@@ -33,11 +33,13 @@
 
 ## 6. Integration checks
 
-- [ ] 6.1 Run `openspec validate --strict` for this change; verify it passes.
-- [ ] 6.2 Run `flutter analyze` and the full `flutter test` suite; verify both are clean (tests mock the Mistral layer and platform channels, never hit the live API).
+- [x] 6.1 Run `openspec validate --strict` for this change; verify it passes.
+- [x] 6.2 Run `flutter analyze` and the full `flutter test` suite; verify both are clean (tests mock the Mistral layer and platform channels, never hit the live API).
 - [ ] 6.3 Physical-device smoke test (the mic/foreground-service rule triggers — audio focus and the wake lock touch the capture path; emulators lie about background capture and audio focus): on a physical Android device — (a) start a session, receive a phone call mid-session, and verify capture pauses with the audio-focus wording and resumes when the call ends, the transcript continuing in the same session; (b) with the screen off, verify the partial wake lock is held while the session runs (e.g. `dumpsys power`) and released after stop; (c) run a 30+ minute screen-off session and record battery before/after; (d) install the debug APK and verify the orange launcher icon (adaptive icon on API 26+). Verify each step on device and record the results.
 - [ ] 6.4 Write the battery-review findings into `battery-review.md` in the change directory (measurement setup, before/after battery, wake-lock verification, and a recommendation for or against a "quality vs. battery" chunking setting); verify the file exists and states a clear recommendation.
 - [ ] 6.5 Tick the four Phase 3 milestone items in `project-plan.md`; verify all Phase 3 checkboxes are checked.
+
+Status note (2026-10-27): 6.1 and 6.2 are done (validate --strict passes; analyze clean; 333 tests green). 6.3 and 6.4 are blocked on hardware — no physical device is connected to this machine (`adb devices` is empty) — and 6.5 stays open until the device session completes (plan items 1–3 are ticked; item 4 waits on the battery measurement and the on-device checks). `battery-review.md` holds the off-device verification and the exact measurement protocol; the battery numbers and the recommendation are pending the device session.
 
 ## Workflow follow-up
 
