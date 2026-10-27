@@ -397,6 +397,13 @@ class LiveSessionController extends Notifier<LiveSessionState> {
   AudioFocusGateway? _audioFocusGateway;
   Completer<void>? _sessionEnded;
   DateTime? _startedAt;
+
+  /// When the current pause began — the elapsed clock freezes while paused
+  /// (design PS-D2): the paused duration is excluded from the session time.
+  DateTime? _pausedAt;
+
+  /// Total paused duration so far this session.
+  Duration _pausedAccumulated = Duration.zero;
   String? _audioPath;
   bool _turnClosed = true;
 
@@ -468,6 +475,8 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     final sessionId = CaptureService.newSessionId();
     final startedAt = _clock.now();
     _startedAt = startedAt;
+    _pausedAt = null;
+    _pausedAccumulated = Duration.zero;
     _audioPath = null;
     _turnClosed = true;
     _sessionEnded = Completer<void>();
@@ -516,6 +525,8 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     if (state.phase != LiveSessionPhase.active) {
       return;
     }
+    // The elapsed clock freezes from here (design PS-D2).
+    _pausedAt = _clock.now();
     ref.read(captureServiceProvider).pause();
     state = state.copyWith(
       phase: LiveSessionPhase.paused,
@@ -528,6 +539,13 @@ class LiveSessionController extends Notifier<LiveSessionState> {
   Future<void> resume() async {
     if (state.phase != LiveSessionPhase.paused) {
       return;
+    }
+    // Fold the paused period into the accumulated pause time — the elapsed
+    // clock resumes from where it froze (design PS-D2).
+    final pausedAt = _pausedAt;
+    if (pausedAt != null) {
+      _pausedAccumulated += _clock.now().difference(pausedAt);
+      _pausedAt = null;
     }
     ref.read(captureServiceProvider).resume();
     state = state.copyWith(
@@ -733,21 +751,20 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     if (startedAt == null) {
       return;
     }
-    switch (state.phase) {
-      case LiveSessionPhase.active || LiveSessionPhase.paused:
-        break;
-      default:
-        return;
+    // The clock advances only while capturing: a paused period is excluded
+    // from the session time, and the estimate (elapsed × rate) accrues only
+    // while capture is active — nothing is sent or billed while paused
+    // (design PS-D2).
+    if (state.phase != LiveSessionPhase.active) {
+      return;
     }
-    final elapsed = _clock.now().difference(startedAt).inSeconds;
+    final elapsed =
+        (_clock.now().difference(startedAt) - _pausedAccumulated).inSeconds;
     if (elapsed == state.elapsedSeconds) {
       return;
     }
     state = state.copyWith(
       elapsedSeconds: elapsed,
-      // The estimate keeps growing while paused: the client's keep-alive
-      // silence feed keeps the server session (and its billing) alive
-      // (design P1-D2).
       estimatedCost: elapsed / 60 * config.realtimeRatePerMinute,
     );
   }
@@ -890,7 +907,10 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     final startedAt = _startedAt;
     final durationSeconds = startedAt == null
         ? 0
-        : _clock.now().difference(startedAt).inSeconds;
+        // The session duration is the active capture time — paused periods
+        // are excluded (design PS-D2), matching the billed audio.
+        : (_clock.now().difference(startedAt) - _pausedAccumulated)
+            .inSeconds;
     // The sync prefix: flip the phase and unblock stop() before the first
     // await, so a second session-ended event is ignored.
     state = state.copyWith(

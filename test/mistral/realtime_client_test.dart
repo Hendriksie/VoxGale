@@ -502,6 +502,141 @@ void main() {
     await incoming.close();
   });
 
+  group('setPaused (PS-D1)', () {
+    test('while paused, no keep-alive silence is fed', () async {
+      final incoming = StreamController<String>();
+      final sink = RecordingWebSocketSink();
+      final channel = mockChannel(incoming, sink);
+
+      final client = WebSocketRealtimeClient(
+        apiKey: 'test-key',
+        config: MistralConfig.defaults,
+        channelFactory: (uri, headers) => channel,
+        keepAliveAfter: const Duration(milliseconds: 50),
+      );
+      final sessionFuture = client.startSession(RealtimeSessionConfig());
+      incoming.add(jsonEncode({'type': 'session.created', 'session': {}}));
+      incoming.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+      final session = await sessionFuture;
+
+      // One real chunk, then a pause: without the pause the feed would fire
+      // within ~250 ms (the keep-alive test above); with it, nothing is sent.
+      session.sendAudio(Uint8List.fromList([1]));
+      session.setPaused(true);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(
+        sink.jsonMessages().where((m) => m['type'] == 'input_audio.append'),
+        hasLength(1),
+      );
+
+      await session.dispose();
+      await incoming.close();
+    });
+
+    test('a disconnect while paused is not retried until the resume',
+        () async {
+      final incoming1 = StreamController<String>();
+      final incoming2 = StreamController<String>();
+      final sink1 = RecordingWebSocketSink();
+      final sink2 = RecordingWebSocketSink();
+      final channel1 = mockChannel(incoming1, sink1);
+      final channel2 = mockChannel(incoming2, sink2);
+
+      var call = 0;
+      final client = WebSocketRealtimeClient(
+        apiKey: 'test-key',
+        config: MistralConfig.defaults,
+        keepAliveAfter: null,
+        reconnectDelay: const Duration(milliseconds: 10),
+        channelFactory: (uri, headers) => [channel1, channel2][call++],
+      );
+      final sessionFuture = client.startSession(RealtimeSessionConfig());
+      incoming1.add(jsonEncode({'type': 'session.created', 'session': {}}));
+      incoming1.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+      final session = await sessionFuture;
+
+      // Pause, then the server idle-closes the silent session: the client
+      // must NOT reconnect while paused (that would loop close → connect →
+      // close for the whole pause).
+      session.setPaused(true);
+      incoming1.addError(Exception('server idle-closed'));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(call, 1);
+
+      // Audio captured after the resume is buffered...
+      session.sendAudio(Uint8List.fromList([2]));
+      // ...and the resume reconnects, replaying it on the new connection.
+      session.setPaused(false);
+      await waitFor(() => call == 2);
+      incoming2.add(jsonEncode({'type': 'session.created', 'session': {}}));
+      await pumpEventQueue();
+      incoming2.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+      await waitFor(
+        () => sink2
+            .jsonMessages()
+            .where((m) => m['type'] == 'input_audio.append')
+            .isNotEmpty,
+      );
+      final appends = sink2
+          .jsonMessages()
+          .where((m) => m['type'] == 'input_audio.append')
+          .toList();
+      expect(appends, hasLength(1));
+      expect(base64Decode(appends.single['audio'] as String), [2]);
+
+      await session.dispose();
+      await incoming1.close();
+      await incoming2.close();
+    });
+
+    test('resuming while still connected does not reconnect and restarts '
+        'the keep-alive', () async {
+      final incoming = StreamController<String>();
+      final sink = RecordingWebSocketSink();
+      final channel = mockChannel(incoming, sink);
+
+      var call = 0;
+      final client = WebSocketRealtimeClient(
+        apiKey: 'test-key',
+        config: MistralConfig.defaults,
+        channelFactory: (uri, headers) {
+          call++;
+          return channel;
+        },
+        keepAliveAfter: const Duration(milliseconds: 50),
+      );
+      final sessionFuture = client.startSession(RealtimeSessionConfig());
+      incoming.add(jsonEncode({'type': 'session.created', 'session': {}}));
+      incoming.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+      final session = await sessionFuture;
+
+      session.sendAudio(Uint8List.fromList([1]));
+      session.setPaused(true);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      // No silence while paused.
+      expect(
+        sink.jsonMessages().where((m) => m['type'] == 'input_audio.append'),
+        hasLength(1),
+      );
+
+      session.setPaused(false);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      // Still connected: no second connection was opened...
+      expect(call, 1);
+      // ...and the keep-alive feed restarted.
+      expect(
+        sink
+            .jsonMessages()
+            .where((m) => m['type'] == 'input_audio.append')
+            .length,
+        greaterThan(1),
+      );
+
+      await session.dispose();
+      await incoming.close();
+    });
+  });
+
   test('a connection failure surfaces a sanitized MistralApiException',
       () async {
     const secret = 'sk-super-secret';

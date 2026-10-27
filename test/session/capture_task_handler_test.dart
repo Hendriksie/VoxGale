@@ -132,6 +132,7 @@ void main() {
     when(() => client.startSession(any())).thenAnswer((_) async => session);
     when(() => session.events).thenAnswer((_) => eventController.stream);
     when(() => session.sendAudio(any())).thenAnswer((_) {});
+    when(() => session.setPaused(any())).thenAnswer((_) {});
     when(() => session.end()).thenAnswer((_) async {});
     when(() => session.dispose()).thenAnswer((_) async {});
     when(() => recorder.startStream(any()))
@@ -294,6 +295,93 @@ void main() {
 
     handler.onReceiveData('stop');
     await waitFor(() => transport.stopServiceCalls == 1);
+  });
+
+  test('pause and resume commands mark the realtime session paused too '
+      '(design PS-D1)', () async {
+    final handler = createHandler();
+    await startHandler(handler);
+
+    handler.onReceiveData('pause');
+    await waitFor(() => transport.notificationTexts.last.startsWith('Paused'));
+    verify(() => session.setPaused(true)).called(1);
+
+    handler.onReceiveData('resume');
+    await waitFor(
+      () => transport.notificationTexts.last.startsWith('Transcribing'),
+    );
+    verify(() => session.setPaused(false)).called(1);
+
+    handler.onReceiveData('stop');
+    await waitFor(() => transport.stopServiceCalls == 1);
+  });
+
+  test('the notification elapsed time freezes while paused (design PS-D2)',
+      () async {
+    final handler = createHandler(
+      notificationInterval: const Duration(milliseconds: 20),
+    );
+    await startHandler(handler);
+    await waitFor(() => transport.notificationTexts.isNotEmpty);
+
+    handler.onReceiveData('pause');
+    await waitFor(() => transport.notificationTexts.last.startsWith('Paused'));
+    final frozen = transport.notificationTexts.last;
+
+    // The periodic timer keeps refreshing, but the elapsed time holds still.
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    expect(transport.notificationTexts.last, frozen);
+
+    handler.onReceiveData('stop');
+    await waitFor(() => transport.stopServiceCalls == 1);
+  });
+
+  group('activeElapsed (design PS-D2)', () {
+    final t0 = DateTime(2026, 10, 27, 10, 0, 0);
+
+    test('no pause: plain wall time', () {
+      expect(
+        CaptureTaskHandler.activeElapsed(
+          startedAt: t0,
+          now: t0.add(const Duration(seconds: 65)),
+        ),
+        const Duration(seconds: 65),
+      );
+    });
+
+    test('a completed pause is excluded', () {
+      expect(
+        CaptureTaskHandler.activeElapsed(
+          startedAt: t0,
+          now: t0.add(const Duration(seconds: 65)),
+          pausedAccumulated: const Duration(seconds: 20),
+        ),
+        const Duration(seconds: 45),
+      );
+    });
+
+    test('a pause in progress is excluded up to now', () {
+      expect(
+        CaptureTaskHandler.activeElapsed(
+          startedAt: t0,
+          now: t0.add(const Duration(seconds: 65)),
+          pausedSince: t0.add(const Duration(seconds: 30)),
+        ),
+        const Duration(seconds: 30),
+      );
+    });
+
+    test('multiple pauses accumulate', () {
+      expect(
+        CaptureTaskHandler.activeElapsed(
+          startedAt: t0,
+          now: t0.add(const Duration(minutes: 2)),
+          pausedAccumulated: const Duration(seconds: 20),
+          pausedSince: t0.add(const Duration(seconds: 90)),
+        ),
+        const Duration(seconds: 70),
+      );
+    });
   });
 
   test('the notification timer refreshes the elapsed time while running '

@@ -132,6 +132,13 @@ class CaptureTaskHandler extends TaskHandler {
   String? _sessionId;
   String? _audioPath;
   DateTime? _startedAt;
+
+  /// When the current pause began — the notification's elapsed time freezes
+  /// while paused (design PS-D2).
+  DateTime? _pausedAt;
+
+  /// Total paused duration so far (subtracted from the elapsed session time).
+  Duration _pausedAccumulated = Duration.zero;
   SessionTranscriptionDone? _done;
   bool _paused = false;
   bool _stopping = false;
@@ -203,6 +210,8 @@ class CaptureTaskHandler extends TaskHandler {
       _sessionId = sessionId;
       _audioPath = audioPath;
       _startedAt = DateTime.now();
+      _pausedAt = null;
+      _pausedAccumulated = Duration.zero;
       _eventSub = session.events.listen(_forward);
       // Audio tee: every chunk goes to the realtime session and to the WAV
       // saved for the post-session diarization pass.
@@ -280,21 +289,33 @@ class CaptureTaskHandler extends TaskHandler {
       return;
     }
     try {
-      // record's pause() stops the stream's audio flow; the subscription, the
-      // WAV, and the realtime session stay in place (design P1-D2) — the
-      // client's keep-alive silence feed keeps the server session alive.
+      // record's pause() stops the stream's audio flow; the subscription and
+      // the WAV stay in place. The realtime session is marked paused too:
+      // no audio — not even keep-alive silence — is sent while paused, so
+      // the pause costs nothing (design PS-D1).
       await _recorder?.pause();
     } catch (e) {
       _send(SessionError('Could not pause capture: $e'));
       return;
     }
+    _session?.setPaused(true);
     _paused = true;
+    _pausedAt = DateTime.now();
     await _updateNotification();
   }
 
   Future<void> _resume() async {
     if (!_paused || _stopping) {
       return;
+    }
+    // The session resumes first so a stream closed while paused is
+    // re-established before the recorder restarts the audio flow (design
+    // PS-D1); audio captured meanwhile is buffered and replayed.
+    _session?.setPaused(false);
+    final pausedAt = _pausedAt;
+    if (pausedAt != null) {
+      _pausedAccumulated += DateTime.now().difference(pausedAt);
+      _pausedAt = null;
     }
     try {
       await _recorder?.resume();
@@ -388,17 +409,39 @@ class CaptureTaskHandler extends TaskHandler {
   }
 
   /// "Transcribing · MM:SS" (or "Paused · MM:SS" while paused) — the elapsed
-  /// session time in the persistent notification.
+  /// session time in the persistent notification. The elapsed time excludes
+  /// paused periods: it freezes while paused (design PS-D2).
   Future<void> _updateNotification() async {
     final startedAt = _startedAt;
     if (startedAt == null) {
       return;
     }
-    final elapsed = DateTime.now().difference(startedAt);
+    final elapsed = activeElapsed(
+      startedAt: startedAt,
+      now: DateTime.now(),
+      pausedAccumulated: _pausedAccumulated,
+      pausedSince: _pausedAt,
+    );
     final mm = elapsed.inMinutes.toString().padLeft(2, '0');
     final ss = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
     final label = _paused ? 'Paused' : 'Transcribing';
     await _transport.updateNotificationText('$label · $mm:$ss');
+  }
+
+  /// The elapsed session time excluding paused periods — what the
+  /// notification shows (and what the controller's clock accrues): a pause
+  /// is a hole in the session, not part of it (design PS-D2).
+  static Duration activeElapsed({
+    required DateTime startedAt,
+    required DateTime now,
+    Duration pausedAccumulated = Duration.zero,
+    DateTime? pausedSince,
+  }) {
+    var elapsed = now.difference(startedAt) - pausedAccumulated;
+    if (pausedSince != null) {
+      elapsed -= now.difference(pausedSince);
+    }
+    return elapsed;
   }
 
   /// Rebuilds the [RealtimeSessionConfig] from the `session` object of the

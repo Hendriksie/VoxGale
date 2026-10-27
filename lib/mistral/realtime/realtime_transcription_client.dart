@@ -29,6 +29,15 @@ abstract interface class RealtimeSession {
   /// not yet replayed). Zero when connected and caught up.
   double get bufferedAudioSeconds;
 
+  /// Marks the session paused (no audio is being captured) or resumed.
+  ///
+  /// While paused, no audio is sent — including no keep-alive silence — so
+  /// a pause accrues no transcription cost, and a disconnect is not retried
+  /// (the server may idle-close a silent session; retrying while paused
+  /// would loop). Resuming restarts the keep-alive and reconnects first if
+  /// the connection was lost, replaying audio buffered in the meantime.
+  void setPaused(bool paused);
+
   /// Ends the session: sends `input_audio.end`, waits for the final
   /// `transcription.done`, and closes the connection.
   Future<void> end();

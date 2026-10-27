@@ -647,6 +647,64 @@ void main() {
     });
   });
 
+  group('pause freezes the session clock (PS-D2)', () {
+    test('the elapsed time and estimate freeze while paused and resume '
+        'from the frozen value', () async {
+      await startActiveSession();
+
+      clock.advance(const Duration(seconds: 5));
+      clock.tick();
+      expect(state().elapsedSeconds, 5);
+      final estimateAtPause = state().estimatedCost;
+      expect(estimateAtPause, greaterThan(0));
+
+      await controller().pause();
+      clock.advance(const Duration(seconds: 10));
+      clock.tick();
+      // The clock does not advance while paused — and neither does the
+      // estimate (nothing is sent or billed while paused).
+      expect(state().elapsedSeconds, 5);
+      expect(state().estimatedCost, estimateAtPause);
+
+      await controller().resume();
+      clock.advance(const Duration(seconds: 3));
+      clock.tick();
+      expect(state().elapsedSeconds, 8);
+      expect(state().estimatedCost, greaterThan(estimateAtPause));
+    });
+
+    test('the finalized duration excludes the paused time', () async {
+      await startActiveSession();
+
+      clock.advance(const Duration(seconds: 5));
+      clock.tick();
+      await controller().pause();
+      clock.advance(const Duration(seconds: 10));
+      await controller().resume();
+      clock.advance(const Duration(seconds: 3));
+      clock.tick();
+
+      // Stop: the final session-ended event finalizes the session with the
+      // active capture time (5 s + 3 s; the 10 s pause is excluded).
+      final audioPath = await writeSessionAudio(32000 * 8);
+      final stopFuture = controller().stop();
+      eventController.add(
+        SessionEnded(
+          sessionId: startedSessionId!,
+          audioPath: audioPath,
+          fullText: 'Hello',
+          segments: const [TranscriptSegment(text: 'Hello')],
+          language: 'en',
+          model: 'voxtral-mini-transcribe-realtime-3-0',
+          usage: const Usage(promptAudioSeconds: 8),
+        ),
+      );
+      await stopFuture;
+      await waitFor(() => state().phase == LiveSessionPhase.passOffered);
+      expect(state().durationSeconds, 8);
+    });
+  });
+
   group('audio focus (3.2)', () {
     test('focus loss pauses the session through the existing pause path and '
         'keeps the session open; focus gain resumes into the same '

@@ -163,6 +163,10 @@ class WebSocketRealtimeSession implements RealtimeSession {
   bool _disposed = false;
   bool _reconnecting = false;
 
+  /// Set by [setPaused]: while paused, no audio is sent (no keep-alive
+  /// silence, so the pause costs nothing) and disconnects are not retried.
+  bool _paused = false;
+
   Timer? _keepAliveTimer;
   DateTime? _lastAudioSentAt;
   bool _keepAliveFed = false;
@@ -350,6 +354,13 @@ class WebSocketRealtimeSession implements RealtimeSession {
     } catch (_) {
       // Already dead.
     }
+    if (_paused) {
+      // While paused no audio is sent, so the server may idle-close the
+      // silent session; reconnecting now would loop (close → connect →
+      // close). The resume reconnects instead (design PS-D1).
+      _reconnecting = false;
+      return;
+    }
     var attempts = 0;
     while (!_ending && !_disposed) {
       // Exponential backoff (capped) so a flapping connection does not
@@ -371,6 +382,29 @@ class WebSocketRealtimeSession implements RealtimeSession {
       }
     }
     _reconnecting = false;
+  }
+
+  @override
+  void setPaused(bool paused) {
+    if (_paused == paused) {
+      return;
+    }
+    _paused = paused;
+    if (paused) {
+      // No audio while paused — including no keep-alive silence — so the
+      // pause is free; a disconnect while paused is left for the resume
+      // (the server may idle-close a silent session; retrying now would
+      // loop close → connect → close) (design PS-D1).
+      _stopKeepAlive();
+    } else {
+      _startKeepAlive();
+      if (!_connected && !_reconnecting && !_ending && !_disposed) {
+        // The stream may have been closed while paused; re-establish it
+        // before audio flows again. Audio captured meanwhile is buffered
+        // and replayed by the reconnect path.
+        unawaited(_handleDisconnect());
+      }
+    }
   }
 
   @override
