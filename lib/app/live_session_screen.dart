@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../session/live_session_controller.dart';
 import '../session/session_providers.dart';
 import 'debug_hub_screen.dart';
+import 'error_states.dart';
 import 'file_transcription_screen.dart';
 import 'formatters.dart';
 import 'history_screen.dart';
@@ -89,21 +90,19 @@ class LiveSessionScreen extends ConsumerWidget {
             _StatusRow(state: state),
             if (state.batteryPromptNeeded)
               _BatteryPromptBanner(onOpenSettings: controller.openBatterySettings),
-            if (state.hasError)
-              _ErrorBanner(
-                state: state,
-                onOpenSettings: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const SettingsScreen(),
-                  ),
-                ),
+            if (state.hasError && state.phase != LiveSessionPhase.error)
+              ErrorBanner(
+                kind: classifyFailure(state.error),
+                message: state.error,
               ),
             Expanded(
-              child: TranscriptView(
-                turns: state.turns,
-                gapMarkers: state.gapMarkers,
-                autoScroll: state.phase == LiveSessionPhase.active,
-              ),
+              child: state.phase == LiveSessionPhase.error
+                  ? _FatalErrorView(state: state, controller: controller)
+                  : TranscriptView(
+                      turns: state.turns,
+                      gapMarkers: state.gapMarkers,
+                      autoScroll: state.phase == LiveSessionPhase.active,
+                    ),
             ),
             _PassSection(state: state, controller: controller),
             _ControlsBar(state: state, controller: controller),
@@ -235,67 +234,33 @@ class _ConnectionChip extends StatelessWidget {
   }
 }
 
-/// The error surface: a fatal error card in the error phase; a slim warning
-/// row for a transient error while the session runs. The API key is never
-/// displayed — only saved/not-saved states (and never the value itself).
-/// A missing key gets an open-settings action (the settings screen owns key
-/// entry since Phase 2 — the debug-only entry is gone).
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.state, required this.onOpenSettings});
+/// The fatal error surface (empty-error-states spec): a blocking failure
+/// ended the flow, so the transcript area shows the full-screen
+/// [ErrorStateView] — the shared taxonomy's icon, the state's message, and
+/// the remedy action the kind maps to. The API key is never displayed — only
+/// saved/not-saved states (and never the value itself). A missing key or a
+/// rejected key gets an open-settings action (the settings screen owns key
+/// entry since Phase 2 — the debug-only entry is gone); a mic-permission
+/// failure re-requests the permission; anything else offers a retry (the
+/// controls bar's Start remains available too).
+class _FatalErrorView extends StatelessWidget {
+  const _FatalErrorView({required this.state, required this.controller});
 
   final LiveSessionState state;
-  final VoidCallback onOpenSettings;
+  final LiveSessionController controller;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final fatal = state.phase == LiveSessionPhase.error;
-    final containerColor =
-        fatal ? theme.colorScheme.errorContainer : theme.colorScheme.tertiaryContainer;
-    final onContainerColor = fatal
-        ? theme.colorScheme.onErrorContainer
-        : theme.colorScheme.onTertiaryContainer;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Material(
-        color: containerColor,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                fatal ? Icons.error_outline : Icons.warning_amber_outlined,
-                color: onContainerColor,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      state.error,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: onContainerColor,
-                      ),
-                    ),
-                    if (fatal && state.missingApiKey)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: TextButton(
-                          onPressed: onOpenSettings,
-                          child: const Text('Open settings'),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+    final kind = classifyFailure(state.error);
+    final VoidCallback remedy = switch (kind) {
+      FailureKind.missingKey || FailureKind.auth => () =>
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
           ),
-        ),
-      ),
-    );
+      FailureKind.micPermissionDenied => () => controller.requestMicPermission(),
+      _ => () => controller.start(),
+    };
+    return ErrorStateView(kind: kind, message: state.error, onRemedy: remedy);
   }
 }
 

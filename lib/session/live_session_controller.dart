@@ -592,6 +592,12 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     await ref.read(captureServiceProvider).openBatteryOptimizationSettings();
   }
 
+  /// Re-requests the RECORD_AUDIO runtime permission — the remedy action of
+  /// the mic-permission-denied state (Phase 3 group 2). Returns whether the
+  /// permission is now granted; the gateway prompts natively.
+  Future<bool> requestMicPermission() =>
+      ref.read(foregroundTaskGatewayProvider).requestRecordAudioPermission();
+
   // -- Event handling --------------------------------------------------------
 
   Future<void> _onEvent(SessionEvent event) async {

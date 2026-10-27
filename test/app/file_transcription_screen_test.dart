@@ -1,14 +1,17 @@
-// Widget tests for the file transcription screen (task 4.3, design P2-D1):
-// the idle pick action, the missing-key banner with its open-settings path,
-// the picked view (file, model choice, estimate), the running progress (no
-// partial text — the batch API is one-shot), the done result with actual
-// usage, and the error state keeping the picked file. The controller is a
-// test double — never real services, never the live API.
+// Widget tests for the file transcription screen (task 4.3, design P2-D1,
+// Phase 3 group 2): the idle pick action (the shared empty state), the
+// missing-key banner with its open-settings path, the picked view (file, model
+// choice, estimate), the running progress (no partial text — the batch API is
+// one-shot), the done result with actual usage, and the error state keeping
+// the picked file — rendered through the shared taxonomy (missing key, no
+// network, auth, quota, generic). The controller is a test double — never
+// real services, never the live API.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:voxtral_live/app/error_states.dart';
 import 'package:voxtral_live/app/file_transcription_screen.dart';
 import 'package:voxtral_live/app/settings_screen.dart';
 import 'package:voxtral_live/app/transcript_widgets.dart';
@@ -77,6 +80,9 @@ void main() {
         const FileTranscriptionState(),
       );
 
+      // The shared empty state with its primary action.
+      expect(find.byType(EmptyStateView), findsOneWidget);
+      expect(find.text('Import an audio file'), findsOneWidget);
       expect(find.text('Pick an audio file'), findsOneWidget);
       expect(find.text('No API key saved.'), findsNothing);
 
@@ -93,6 +99,9 @@ void main() {
         const FileTranscriptionState(missingApiKey: true),
       );
 
+      // The shared inline banner, classified as the missing-key kind.
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.byIcon(Icons.vpn_key_off), findsOneWidget);
       expect(find.textContaining('No API key saved'), findsOneWidget);
 
       await tester.tap(find.text('Open settings'));
@@ -275,8 +284,11 @@ void main() {
         ),
       );
 
-      expect(find.text('The file transcription failed'), findsOneWidget);
+      // The shared full-screen error state (generic kind).
+      expect(find.byType(ErrorStateView), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
       expect(find.text('The file is too large for the API.'), findsOneWidget);
+      // The picked file is kept (file-transcription spec).
       expect(find.text('interview.mp3'), findsOneWidget);
 
       await tester.tap(find.text('Retry'));
@@ -286,6 +298,114 @@ void main() {
       await tester.tap(find.text('Choose a different file'));
       await tester.pump();
       expect(controller.calls, ['transcribe', 'pick']);
+    });
+
+    testWidgets('a no-network error offers a retry and keeps the file',
+        (tester) async {
+      final controller = await pumpScreen(
+        tester,
+        const FileTranscriptionState(
+          phase: FileTranscriptionPhase.error,
+          fileName: 'interview.mp3',
+          error: 'Network timeout while calling the transcription API '
+              '(receiveTimeout)',
+          selectedModel: 'voxtral-mini-transcribe-3-0',
+        ),
+      );
+
+      expect(find.byType(ErrorStateView), findsOneWidget);
+      expect(find.byIcon(Icons.wifi_off), findsOneWidget);
+      expect(find.textContaining('Network timeout'), findsOneWidget);
+      expect(find.text('interview.mp3'), findsOneWidget);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      expect(controller.calls, ['transcribe']);
+    });
+
+    testWidgets('an auth error opens settings and keeps the file',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        const FileTranscriptionState(
+          phase: FileTranscriptionPhase.error,
+          fileName: 'interview.mp3',
+          error: 'The API key was rejected. Check the key and try again.',
+          selectedModel: 'voxtral-mini-transcribe-3-0',
+        ),
+      );
+
+      expect(find.byType(ErrorStateView), findsOneWidget);
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      expect(find.textContaining('API key was rejected'), findsOneWidget);
+      expect(find.text('interview.mp3'), findsOneWidget);
+
+      await tester.tap(find.text('Open settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SettingsScreen), findsOneWidget);
+    });
+
+    testWidgets('a quota error offers a retry and keeps the file',
+        (tester) async {
+      final controller = await pumpScreen(
+        tester,
+        const FileTranscriptionState(
+          phase: FileTranscriptionPhase.error,
+          fileName: 'interview.mp3',
+          error: 'Your API quota is exhausted.',
+          selectedModel: 'voxtral-mini-transcribe-3-0',
+        ),
+      );
+
+      expect(find.byType(ErrorStateView), findsOneWidget);
+      expect(find.byIcon(Icons.account_balance_wallet_outlined),
+          findsOneWidget);
+      expect(find.text('Your API quota is exhausted.'), findsOneWidget);
+      expect(find.text('interview.mp3'), findsOneWidget);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      expect(controller.calls, ['transcribe']);
+    });
+
+    testWidgets('a missing-key error opens settings (no file was picked)',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        const FileTranscriptionState(
+          phase: FileTranscriptionPhase.error,
+          error: 'No API key saved. Add your Mistral API key in Settings.',
+          missingApiKey: true,
+        ),
+      );
+
+      expect(find.byType(ErrorStateView), findsOneWidget);
+      expect(find.byIcon(Icons.vpn_key_off), findsOneWidget);
+      expect(find.textContaining('No API key saved'), findsOneWidget);
+
+      await tester.tap(find.text('Open settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SettingsScreen), findsOneWidget);
+    });
+
+    testWidgets('an error carrying key-like material renders only the '
+        'sanitized text', (tester) async {
+      await pumpScreen(
+        tester,
+        const FileTranscriptionState(
+          phase: FileTranscriptionPhase.error,
+          fileName: 'interview.mp3',
+          error: 'Unauthorized: Bearer sk-abc123def456ghi',
+          selectedModel: 'voxtral-mini-transcribe-3-0',
+        ),
+      );
+
+      expect(find.textContaining('sk-abc123def456ghi'), findsNothing);
+      expect(find.text('Something went wrong. Try again.'), findsOneWidget);
+      // The picked file is still kept.
+      expect(find.text('interview.mp3'), findsOneWidget);
     });
   });
 }

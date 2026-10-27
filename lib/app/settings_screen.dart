@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../mistral/mistral.dart';
 import '../session/session_providers.dart';
 import '../session/settings_controller.dart';
+import 'error_states.dart';
 import 'theme.dart';
 
 /// The settings screen: the app's production settings (settings spec). It
@@ -80,6 +81,10 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     final theme = Theme.of(context);
     final state = widget.state;
     final controller = widget.controller;
+    // The validation error rendered through the shared taxonomy: an invalid
+    // key is an auth failure, an unreachable API a no-network failure (with a
+    // retry action — re-validating the entered key).
+    final errorKind = state.hasError ? classifyFailure(state.error) : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -120,11 +125,12 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
         ],
         if (state.hasError) ...[
           const SizedBox(height: 8),
-          Text(
-            state.error,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.error,
-            ),
+          ErrorBanner(
+            kind: errorKind!,
+            message: state.error,
+            onRemedy: errorKind == FailureKind.noNetwork
+                ? () => controller.saveKey(_keyController.text)
+                : null,
           ),
         ],
         if (state.info.isNotEmpty) ...[

@@ -1,9 +1,10 @@
-// Widget tests for the settings screen (task 3.2, design P2-D4): the key
-// status (saved/not saved — the value is never displayed), save-with-
-// validation (invalid key → error, not saved; valid key → saved), key
-// removal, and the persisted preferences (default batch model, language
-// hint). The validator, key store, and preferences repository are test
-// doubles — never real services, never the live API.
+// Widget tests for the settings screen (task 3.2, design P2-D4, Phase 3
+// group 2): the key status (saved/not saved — the value is never displayed),
+// save-with-validation (invalid key → the shared auth error banner, not
+// saved; valid key → saved; unreachable API → the shared no-network banner
+// with a retry action), key removal, and the persisted preferences (default
+// batch model, language hint). The validator, key store, and preferences
+// repository are test doubles — never real services, never the live API.
 
 import 'dart:async';
 
@@ -11,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:voxtral_live/app/error_states.dart';
 import 'package:voxtral_live/app/settings_screen.dart';
 import 'package:voxtral_live/mistral/mistral.dart';
 import 'package:voxtral_live/session/session_providers.dart';
@@ -88,8 +90,8 @@ void main() {
       expect(find.text('sk-new-key'), findsNothing);
     });
 
-    testWidgets('an invalid key shows the error and is not saved',
-        (tester) async {
+    testWidgets('an invalid key shows the shared auth error banner and is '
+        'not saved', (tester) async {
       when(() => validator.validate(any()))
           .thenThrow(MistralApiException('The API key was rejected.'));
       await pumpSettings(tester);
@@ -99,6 +101,10 @@ void main() {
       await tester.tap(find.text('Save key'));
       await tester.pumpAndSettle();
 
+      // The shared taxonomy: an invalid key is an auth failure, rendered
+      // through the inline error banner.
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
       expect(find.text('The API key was rejected.'), findsOneWidget);
       expect(apiKeyStore.key, isNull);
       expect(find.text('Not saved'), findsOneWidget);
@@ -118,12 +124,41 @@ void main() {
       await tester.enterText(find.byType(TextField), 'sk-flaky');
       await tester.tap(find.text('Save key'));
       await tester.pumpAndSettle();
+      // The shared taxonomy: an unreachable API is a no-network failure.
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.byIcon(Icons.wifi_off), findsOneWidget);
       expect(find.text('Could not reach the Mistral API.'), findsOneWidget);
       expect(apiKeyStore.key, isNull);
 
       await tester.tap(find.text('Save key'));
       await tester.pumpAndSettle();
 
+      expect(apiKeyStore.key, 'sk-flaky');
+      expect(find.text('Saved'), findsOneWidget);
+    });
+
+    testWidgets('the no-network error banner offers a retry action that '
+        're-validates the entered key', (tester) async {
+      var calls = 0;
+      when(() => validator.validate(any())).thenAnswer((_) async {
+        calls++;
+        if (calls == 1) {
+          throw MistralApiException('Could not reach the Mistral API.');
+        }
+      });
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+
+      await tester.enterText(find.byType(TextField), 'sk-flaky');
+      await tester.tap(find.text('Save key'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ErrorBanner), findsOneWidget);
+
+      // The banner's retry action re-validates the key still in the field.
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(calls, 2);
       expect(apiKeyStore.key, 'sk-flaky');
       expect(find.text('Saved'), findsOneWidget);
     });

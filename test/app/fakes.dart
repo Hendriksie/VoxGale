@@ -42,7 +42,8 @@ class FakeLiveSessionController extends LiveSessionController {
   final LiveSessionState _state;
 
   /// The action calls, in order ('start', 'pause', 'resume', 'stop',
-  /// 'runDiarizationPass', 'skipDiarizationPass', 'openBatterySettings').
+  /// 'runDiarizationPass', 'skipDiarizationPass', 'openBatterySettings',
+  /// 'requestMicPermission').
   final List<String> calls = [];
 
   @override
@@ -86,6 +87,12 @@ class FakeLiveSessionController extends LiveSessionController {
   @override
   Future<void> openBatterySettings() async {
     calls.add('openBatterySettings');
+  }
+
+  @override
+  Future<bool> requestMicPermission() async {
+    calls.add('requestMicPermission');
+    return true;
   }
 }
 
@@ -132,6 +139,10 @@ class FakeFileTranscriptionController extends FileTranscriptionController {
 /// uses real temp files in the tests that need them).
 class InMemorySessionRepository implements SessionRepository {
   final Map<String, StoredSessionRecord> records = {};
+
+  /// When set, [listSessions] throws it (the history screen's load-error
+  /// state test).
+  Object? listError;
 
   /// Saves a session with its segments (test helper).
   void add(StoredSession session, List<StoredSegment> segments) {
@@ -186,6 +197,10 @@ class InMemorySessionRepository implements SessionRepository {
 
   @override
   Future<List<StoredSession>> listSessions({String? searchQuery}) async {
+    final error = listError;
+    if (error != null) {
+      throw error;
+    }
     final query = searchQuery?.trim() ?? '';
     final sessions = records.values.map((r) => r.session).toList()
       ..sort((a, b) => b.startedAt.compareTo(a.startedAt));

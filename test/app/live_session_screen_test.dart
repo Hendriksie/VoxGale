@@ -1,12 +1,15 @@
-// Widget tests for the live session screen (tasks 5.1, 5.2, 5.4): the
-// turn-grouped transcript (provisional vs finalized styling, speaker chips,
-// the gap marker), the status row (elapsed, estimated cost, actual usage,
-// the connection-status indicator), the state-driven control enablement, the
-// error states (the API key is never displayed), and the battery-restriction
-// prompt. The controller is a test double — never real services.
+// Widget tests for the live session screen (tasks 5.1, 5.2, 5.4, Phase 3
+// group 2): the turn-grouped transcript (provisional vs finalized styling,
+// speaker chips, the gap marker), the status row (elapsed, estimated cost,
+// actual usage, the connection-status indicator), the state-driven control
+// enablement, the error states (the shared taxonomy's full-screen state and
+// transient banner — the API key is never displayed), the shared idle
+// empty-transcript state, and the battery-restriction prompt. The controller
+// is a test double — never real services.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voxtral_live/app/error_states.dart';
 import 'package:voxtral_live/app/live_session_screen.dart';
 import 'package:voxtral_live/app/transcript_widgets.dart';
 import 'package:voxtral_live/session/live_session_controller.dart';
@@ -122,6 +125,7 @@ void main() {
     testWidgets('shows an empty state when there is no transcript', (tester) async {
       await pumpScreen(tester, const LiveSessionState());
 
+      expect(find.byType(EmptyStateView), findsOneWidget);
       expect(
         find.text('Start a session to see the live transcript.'),
         findsOneWidget,
@@ -324,8 +328,10 @@ void main() {
         missingApiKey: true,
       ));
 
+      // The shared full-screen error state (blocking failure).
+      expect(find.byType(ErrorStateView), findsOneWidget);
       expect(find.textContaining('No API key saved'), findsOneWidget);
-      // Phase 2: the missing-key banner offers the settings screen (the
+      // Phase 2: the missing-key state offers the settings screen (the
       // debug-only key entry is gone).
       expect(find.text('Open settings'), findsOneWidget);
       expect(find.textContaining('debug menu'), findsNothing);
@@ -345,14 +351,150 @@ void main() {
       expect(find.text('Start'), findsOneWidget);
     });
 
-    testWidgets('a transient error while running is a warning row',
+    testWidgets('a transient error while running is a slim banner row',
         (tester) async {
       await pumpScreen(tester, activeState(error: 'Connection lost'));
 
+      // The shared inline banner: the failure kind's icon (no network) and
+      // the state's message.
+      expect(find.byType(ErrorBanner), findsOneWidget);
       expect(find.text('Connection lost'), findsOneWidget);
-      expect(find.byIcon(Icons.warning_amber_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.wifi_off), findsOneWidget);
       // The session controls stay available.
       expect(find.text('Stop'), findsOneWidget);
+    });
+  });
+
+  group('shared empty/error states (Phase 3 group 2)', () {
+    testWidgets('the idle empty-transcript state invites starting a session',
+        (tester) async {
+      await pumpScreen(tester, const LiveSessionState());
+
+      expect(find.byType(EmptyStateView), findsOneWidget);
+      expect(find.byIcon(Icons.mic_none), findsOneWidget);
+      expect(
+        find.text('Start a session to see the live transcript.'),
+        findsOneWidget,
+      );
+      // The Start control is right below the empty state.
+      expect(find.text('Start'), findsOneWidget);
+    });
+
+    testWidgets('the mic-permission-denied state re-requests the permission '
+        'from its remedy action', (tester) async {
+      final controller = FakeLiveSessionController(const LiveSessionState(
+        phase: LiveSessionPhase.error,
+        error: 'Microphone permission denied. Grant it to record a session.',
+      ));
+      await tester.pumpWidget(appWithStore(
+        FakeApiKeyStore(),
+        sessionController: controller,
+      ));
+      await tester.pump();
+
+      expect(find.byType(ErrorStateView), findsOneWidget);
+      expect(find.byIcon(Icons.mic_off), findsOneWidget);
+      expect(find.textContaining('Microphone permission denied'),
+          findsOneWidget);
+
+      await tester.tap(find.text('Grant microphone access'));
+      await tester.pump();
+
+      expect(controller.calls, ['requestMicPermission']);
+    });
+
+    testWidgets('the no-network state offers a retry that starts again',
+        (tester) async {
+      final controller = FakeLiveSessionController(const LiveSessionState(
+        phase: LiveSessionPhase.error,
+        error: 'Could not reach the Mistral API (connectionError).',
+      ));
+      await tester.pumpWidget(appWithStore(
+        FakeApiKeyStore(),
+        sessionController: controller,
+      ));
+      await tester.pump();
+
+      expect(find.byType(ErrorStateView), findsOneWidget);
+      expect(find.byIcon(Icons.wifi_off), findsOneWidget);
+      expect(
+        find.text('Could not reach the Mistral API (connectionError).'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+
+      expect(controller.calls, ['start']);
+    });
+
+    testWidgets('a fatal error carrying key-like material renders only the '
+        'sanitized text', (tester) async {
+      await pumpScreen(tester, const LiveSessionState(
+        phase: LiveSessionPhase.error,
+        error: 'Unauthorized: Bearer sk-abc123def456ghi',
+      ));
+
+      expect(find.textContaining('sk-abc123def456ghi'), findsNothing);
+      expect(find.text('Something went wrong. Try again.'), findsOneWidget);
+    });
+
+    testWidgets('the transient banner distinguishes auth, quota, and generic '
+        'failures via the taxonomy', (tester) async {
+      // Auth: the rejected-key wording maps to the auth kind's icon.
+      await pumpScreen(
+        tester,
+        activeState(error: 'The API key was rejected. Check the key and try '
+            'again.'),
+      );
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      expect(
+        find.text('The API key was rejected. Check the key and try again.'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      // Quota: the quota wording maps to the quota kind's icon.
+      await pumpScreen(
+        tester,
+        activeState(error: 'Your API quota is exhausted.'),
+      );
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.byIcon(Icons.account_balance_wallet_outlined),
+          findsOneWidget);
+      expect(find.text('Your API quota is exhausted.'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      // Generic: anything else maps to the generic kind's icon.
+      await pumpScreen(
+        tester,
+        activeState(error: 'The capture service stopped unexpectedly.'),
+      );
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    });
+
+    testWidgets('the fatal error state renders in both themes', (tester) async {
+      for (final mode in [ThemeMode.light, ThemeMode.dark]) {
+        await pumpScreen(
+          tester,
+          const LiveSessionState(
+            phase: LiveSessionPhase.error,
+            error: 'No API key saved. Add your Mistral API key to start a '
+                'session.',
+            missingApiKey: true,
+          ),
+          themeMode: mode,
+        );
+
+        expect(find.byType(ErrorStateView), findsOneWidget);
+        expect(find.text('Open settings'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      }
     });
   });
 

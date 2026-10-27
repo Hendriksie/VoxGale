@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../mistral/mistral.dart';
 import '../session/file_transcription_controller.dart';
 import '../session/session_providers.dart';
+import 'error_states.dart';
 import 'formatters.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
@@ -45,8 +46,9 @@ class FileTranscriptionScreen extends ConsumerWidget {
   }
 }
 
-/// The idle view: the missing-key banner (with a path to settings) and the
-/// pick-a-file call to action.
+/// The idle view: the missing-key banner (the shared inline error state, with
+/// a path to settings) and the pick-a-file empty state with its call to
+/// action.
 class _IdleView extends StatelessWidget {
   const _IdleView({required this.state, required this.controller});
 
@@ -55,98 +57,27 @@ class _IdleView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       children: [
-        if (state.missingApiKey) _MissingKeyBanner(),
-        Expanded(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.audio_file_outlined,
-                    size: 56,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Import an audio file',
-                    style: theme.textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'It is transcribed with speaker labels and saved to your '
-                    'history.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: mistralOrange,
-                      foregroundColor: Colors.black,
-                    ),
-                    onPressed: () => controller.pick(),
-                    icon: const Icon(Icons.folder_open),
-                    label: const Text('Pick an audio file'),
-                  ),
-                ],
-              ),
+        if (state.missingApiKey)
+          ErrorBanner(
+            kind: FailureKind.missingKey,
+            onRemedy: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
             ),
+          ),
+        Expanded(
+          child: EmptyStateView(
+            icon: Icons.audio_file_outlined,
+            message: 'Import an audio file',
+            subtitle:
+                'It is transcribed with speaker labels and saved to your '
+                'history.',
+            actionLabel: 'Pick an audio file',
+            onAction: () => controller.pick(),
           ),
         ),
       ],
-    );
-  }
-}
-
-/// The missing-key banner (settings spec: transcription screens show a
-/// missing-key state) with an open-settings action.
-class _MissingKeyBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Material(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(
-                Icons.vpn_key_off,
-                color: theme.colorScheme.onErrorContainer,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'No API key saved. Add your Mistral API key in Settings.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const SettingsScreen(),
-                  ),
-                ),
-                child: const Text('Open settings'),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -379,9 +310,11 @@ class _DoneView extends StatelessWidget {
   }
 }
 
-/// The error view: the error, the picked file kept (file-transcription spec:
-/// errors surface without losing the selected file), and the retry / re-pick
-/// actions.
+/// The error view (empty-error-states spec): the shared full-screen
+/// [ErrorStateView] — the failure kind's icon, the state's message, and the
+/// remedy the kind maps to (open settings for a missing or rejected key, a
+/// retry otherwise) — with the picked file kept below it (file-transcription
+/// spec: errors surface without losing the selected file).
 class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.state, required this.controller});
 
@@ -391,57 +324,46 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: theme.colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'The file transcription failed',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              state.error,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (state.fileName != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                state.fileName!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+    final kind = classifyFailure(state.error);
+    final VoidCallback remedy = switch (kind) {
+      FailureKind.missingKey || FailureKind.auth => () =>
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+          ),
+      _ => () => controller.transcribe(),
+    };
+    return Column(
+      children: [
+        Expanded(
+          child: ErrorStateView(kind: kind, message: state.error, onRemedy: remedy),
+        ),
+        if (state.fileName != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
               children: [
-                TextButton(
-                  onPressed: () => controller.pick(),
-                  child: const Text('Choose a different file'),
+                Icon(
+                  Icons.audio_file,
+                  color: theme.colorScheme.primary,
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => controller.transcribe(),
-                  child: const Text('Retry'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    state.fileName!,
+                    style: theme.textTheme.titleMedium,
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: TextButton(
+            onPressed: () => controller.pick(),
+            child: const Text('Choose a different file'),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

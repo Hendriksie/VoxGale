@@ -8,10 +8,10 @@
 
 ## 2. Shared empty/error states (design P3-D1, empty-error-states spec)
 
-- [ ] 2.1 Implement `lib/app/error_states.dart`: the full `ErrorStateView` and inline `ErrorBanner` widgets plus the failure-kind → wording/remedy mapping (missing key, mic permission denied, no network, auth, quota, generic); verify with widget tests (each failure kind renders its message and remedy action, in light and dark themes) and a unit test that a failure carrying key-like material renders only the sanitized text.
-- [ ] 2.2 Adopt the shared states on the live session screen: the idle empty-transcript state, the mic-permission-denied state with a grant-permission action, the no-network state with retry, and the auth/quota distinction in the existing error banner; verify with widget tests for each state.
-- [ ] 2.3 Adopt the shared states on the file transcription screen (missing key, no network, auth/quota errors; the error state keeps the picked file) and align the settings screen's validation errors to the same wording and pattern; verify with widget tests.
-- [ ] 2.4 Align the history screen's empty state and load-error state with the shared component (empty-history wording distinct from no-search-matches); verify with widget tests.
+- [x] 2.1 Implement `lib/app/error_states.dart`: the full `ErrorStateView` and inline `ErrorBanner` widgets plus the failure-kind → wording/remedy mapping (missing key, mic permission denied, no network, auth, quota, generic); verify with widget tests (each failure kind renders its message and remedy action, in light and dark themes) and a unit test that a failure carrying key-like material renders only the sanitized text.
+- [x] 2.2 Adopt the shared states on the live session screen: the idle empty-transcript state, the mic-permission-denied state with a grant-permission action, the no-network state with retry, and the auth/quota distinction in the existing error banner; verify with widget tests for each state, plus a physical-device smoke test of the grant-permission remedy (the native RECORD_AUDIO prompt cannot run in a widget test).
+- [x] 2.3 Adopt the shared states on the file transcription screen (missing key, no network, auth/quota errors; the error state keeps the picked file) and align the settings screen's validation errors to the same wording and pattern; verify with widget tests.
+- [x] 2.4 Align the history screen's empty state and load-error state with the shared component (empty-history wording distinct from no-search-matches); verify with widget tests.
 
 ## 3. Audio focus (design P3-D2, live-transcription spec "Respect audio focus")
 

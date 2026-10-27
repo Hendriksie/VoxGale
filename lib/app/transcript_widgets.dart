@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 
 import '../session/session_models.dart';
+import 'error_states.dart';
 import 'theme.dart';
 
 /// The turn-grouped transcript: provisional (streaming) turns in a lighter,
@@ -68,17 +69,12 @@ class _TranscriptViewState extends State<TranscriptView> {
   Widget build(BuildContext context) {
     final items = transcriptItems(widget.turns, widget.gapMarkers);
     if (items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text(
-            'Start a session to see the live transcript.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-        ),
+      // The idle empty-transcript state (empty-error-states spec): an
+      // invitation to start a session, not a blank area. The Start control
+      // sits in the screen's controls bar, right below.
+      return const EmptyStateView(
+        icon: Icons.mic_none,
+        message: 'Start a session to see the live transcript.',
       );
     }
     return ListView.builder(

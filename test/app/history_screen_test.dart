@@ -1,12 +1,15 @@
-// Widget tests for the history screen (task 5.2, design P2-D6): the
-// newest-first list with each entry's source (live session or file name),
-// date, duration, and model; the text search; the empty states; delete-all;
-// and opening an entry's detail view. The repository is an in-memory test
-// double — never real storage.
+// Widget tests for the history screen (task 5.2, design P2-D6, Phase 3
+// group 2): the newest-first list with each entry's source (live session or
+// file name), date, duration, and model; the text search; the empty states
+// (the shared empty state — empty history vs. no search matches, distinct
+// wordings); the load-error state (the shared full-screen error state with a
+// retry); delete-all; and opening an entry's detail view. The repository is
+// an in-memory test double — never real storage.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voxtral_live/app/error_states.dart';
 import 'package:voxtral_live/app/history_detail_screen.dart';
 import 'package:voxtral_live/app/history_screen.dart';
 import 'package:voxtral_live/mistral/mistral.dart';
@@ -117,7 +120,12 @@ void main() {
   testWidgets('shows the empty state when there is no history', (tester) async {
     await pumpHistory(tester, InMemorySessionRepository());
 
+    // The shared empty state: the empty-history wording, with the guidance
+    // that finished transcripts appear here.
+    expect(find.byType(EmptyStateView), findsOneWidget);
     expect(find.text('No transcripts yet.'), findsOneWidget);
+    expect(find.text('Finished transcripts appear here.'), findsOneWidget);
+    expect(find.text('No transcripts match your search.'), findsNothing);
   });
 
   testWidgets('shows the no-match state for a search without results',
@@ -130,7 +138,35 @@ void main() {
     await tester.enterText(find.byType(TextField), 'zebra');
     await tester.pumpAndSettle();
 
+    // The no-search-matches wording stays distinct from the empty-history
+    // wording.
+    expect(find.byType(EmptyStateView), findsOneWidget);
     expect(find.text('No transcripts match your search.'), findsOneWidget);
+    expect(find.text('No transcripts yet.'), findsNothing);
+  });
+
+  testWidgets('shows the load-error state with a retry that reloads the '
+      'history', (tester) async {
+    final repository = InMemorySessionRepository()
+      ..listError = StateError('database is locked');
+    await pumpHistory(tester, repository);
+
+    // The shared full-screen error state (generic kind) with its retry.
+    expect(find.byType(ErrorStateView), findsOneWidget);
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    expect(find.textContaining('database is locked'), findsOneWidget);
+    expect(find.byType(ListView), findsNothing);
+
+    // The retry re-runs the list query; once the failure is gone the
+    // history shows.
+    repository
+      ..listError = null
+      ..add(liveSession(), segments('live-1', 'A live conversation'));
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ErrorStateView), findsNothing);
+    expect(find.text('Live session'), findsOneWidget);
   });
 
   testWidgets('delete-all asks for confirmation and empties the history',

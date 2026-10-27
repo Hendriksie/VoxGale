@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../mistral/mistral.dart';
 import '../session/session_providers.dart';
 import '../storage/storage.dart';
+import 'error_states.dart';
 import 'formatters.dart';
 import 'history_detail_screen.dart';
 
@@ -54,28 +55,28 @@ class HistoryScreen extends ConsumerWidget {
               child: sessionsAsync.when(
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
-                error: (error, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      'Could not load history: $error',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                // The load-error state (empty-error-states spec): the shared
+                // full-screen error state with a retry (re-running the list
+                // query).
+                error: (error, _) => ErrorStateView(
+                  kind: classifyFailure(error),
+                  message: error.toString(),
+                  onRemedy: () => ref.invalidate(historyListProvider),
                 ),
                 data: (sessions) {
                   if (sessions.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Text(
-                          query.isEmpty
-                              ? 'No transcripts yet.'
-                              : 'No transcripts match your search.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
+                    // The empty states (empty-error-states spec): no history
+                    // yet vs. a search without matches — distinct wordings.
+                    return query.isEmpty
+                        ? const EmptyStateView(
+                            icon: Icons.history,
+                            message: 'No transcripts yet.',
+                            subtitle: 'Finished transcripts appear here.',
+                          )
+                        : const EmptyStateView(
+                            icon: Icons.search_off,
+                            message: 'No transcripts match your search.',
+                          );
                   }
                   return ListView.builder(
                     itemCount: sessions.length,

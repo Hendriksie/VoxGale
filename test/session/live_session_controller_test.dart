@@ -14,6 +14,8 @@ import 'package:voxtral_live/storage/storage.dart';
 
 class MockCaptureService extends Mock implements CaptureService {}
 
+class MockForegroundTaskGateway extends Mock implements ForegroundTaskGateway {}
+
 class MockSessionRepository extends Mock implements SessionRepository {}
 
 class MockBatchTranscriptionClient extends Mock
@@ -98,6 +100,7 @@ void main() {
   });
 
   late MockCaptureService captureService;
+  late MockForegroundTaskGateway gateway;
   late MockSessionRepository repository;
   late MockBatchTranscriptionClient batchClient;
   late FakeApiKeyStore apiKeyStore;
@@ -254,6 +257,7 @@ void main() {
 
   setUp(() async {
     captureService = MockCaptureService();
+    gateway = MockForegroundTaskGateway();
     repository = MockSessionRepository();
     batchClient = MockBatchTranscriptionClient();
     apiKeyStore = FakeApiKeyStore()..key = 'test-key';
@@ -274,6 +278,7 @@ void main() {
         apiKeyStoreProvider.overrideWith((ref) => apiKeyStore),
         batchTranscriptionClientProvider.overrideWith((ref) async => batchClient),
         sessionClockProvider.overrideWith((ref) => clock),
+        foregroundTaskGatewayProvider.overrideWith((ref) => gateway),
         sessionFinalizeTimeoutProvider.overrideWith(
           (ref) => const Duration(milliseconds: 100),
         ),
@@ -443,6 +448,16 @@ void main() {
 
       verify(() => captureService.openBatteryOptimizationSettings())
           .called(1);
+    });
+
+    test('requestMicPermission re-requests the record permission through '
+        'the foreground-task gateway (Phase 3 group 2)', () async {
+      when(() => gateway.requestRecordAudioPermission())
+          .thenAnswer((_) async => true);
+
+      expect(await controller().requestMicPermission(), isTrue);
+
+      verify(() => gateway.requestRecordAudioPermission()).called(1);
     });
   });
 

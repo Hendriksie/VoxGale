@@ -101,6 +101,13 @@ final diarizationPassProvider = FutureProvider<DiarizationPass>((ref) async {
 final captureServiceProvider =
     Provider<CaptureService>((ref) => CaptureService());
 
+/// The foreground-task gateway behind the capture service — the platform
+/// seam for the runtime-permission requests. The live screen's
+/// mic-permission-denied remedy re-requests RECORD_AUDIO through it
+/// (Phase 3 group 2); the gateway prompts natively via the `record` package.
+final foregroundTaskGatewayProvider =
+    Provider<ForegroundTaskGateway>((ref) => PluginForegroundTaskGateway());
+
 /// The clock driving the elapsed-time display.
 final sessionClockProvider =
     Provider<SessionClock>((ref) => const SystemSessionClock());
