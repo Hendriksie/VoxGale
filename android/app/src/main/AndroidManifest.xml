@@ -8,6 +8,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <!-- Persistent "recording" notification while backgrounded (API 33+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Partial wake lock held by the capture foreground service while a live
+         session runs, so the CPU stays awake for streaming while the screen is
+         off (Phase 3; without this the service's wake lock cannot be held). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:label="Voxtral Live"

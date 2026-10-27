@@ -20,6 +20,10 @@ void main() {
     iosNotificationOptions: const IOSNotificationOptions(),
     foregroundTaskOptions: ForegroundTaskOptions(
       eventAction: ForegroundTaskEventAction.nothing(),
+      // Explicit (Phase 3): the capture service holds a partial wake lock
+      // while a session runs, so streaming survives the screen being off.
+      // Requires the WAKE_LOCK permission in the manifest.
+      allowWakeLock: true,
     ),
   );
 

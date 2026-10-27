@@ -56,6 +56,10 @@ dependencies:
   # Reads a picked audio file's duration via the platform media APIs, so the
   # pre-upload cost estimate uses the real duration for any common format.
   just_audio: ^0.10.6
+  # Audio-focus management: pause capture when another app takes audio focus
+  # (Phase 3). Already in the tree transitively via just_audio — promoting it
+  # to a direct dependency adds no new package to the lockfile.
+  audio_session: ^0.2.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
