@@ -31,18 +31,22 @@ The system SHALL let the user choose the batch model (Mini or Small) per transcr
 - **THEN** that file is transcribed with the Small model regardless of the default preference
 
 ### Requirement: Show progress for long files
-The system SHALL show transcription progress, displaying partial transcript text as it arrives for long files.
+The system SHALL show a progress state while a file is being transcribed, displaying elapsed time and the running estimated cost. The batch transcription API returns a single response, so partial transcript text is not available and SHALL NOT be displayed while transcribing.
 
 #### Scenario: Long file transcribing
 - **WHEN** a long file is being transcribed
-- **THEN** a progress state is shown and partial text streams in as it is produced
-
-### Requirement: Save and export the result
-The system SHALL save the finished transcript to local history and support exporting it.
+- **THEN** a progress state with elapsed time and the running estimated cost is shown, and no partial transcript text is displayed
 
 #### Scenario: Transcription completes
 - **WHEN** a file transcription completes
-- **THEN** the transcript is saved to history and can be exported to text or Markdown via the system share sheet
+- **THEN** the speaker-labelled transcript replaces the progress state
+
+### Requirement: Save and export the result
+The system SHALL save the finished transcript to local history together with its source file name, the model used, and the billed audio duration reported by the API, and SHALL support exporting it.
+
+#### Scenario: Transcription completes
+- **WHEN** a file transcription completes
+- **THEN** the transcript is saved to history with its source file name, model, and billed usage, and can be exported to text or Markdown via the system share sheet
 
 ### Requirement: Surface transcription errors
 The system SHALL show clear error states for files that are too large or too long for the API, network failures, and API errors, without losing the selected file.
@@ -50,3 +54,10 @@ The system SHALL show clear error states for files that are too large or too lon
 #### Scenario: File exceeds API limits
 - **WHEN** the API rejects a file for exceeding duration or size limits
 - **THEN** an error state explains the limit, and the user can pick a different file
+
+### Requirement: Provide a file transcription entry point in the app's main UI
+The system SHALL provide an entry point to file transcription mode in the app's main navigation, which opens the system file picker for an audio file.
+
+#### Scenario: User opens file mode
+- **WHEN** the user taps the file transcription action in the app's main UI
+- **THEN** the system file picker opens for selecting an audio file
