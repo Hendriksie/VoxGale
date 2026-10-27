@@ -75,7 +75,7 @@ The system SHALL show clear error states for a missing or invalid API key, denie
 - **THEN** an error state is shown, the text received so far is preserved, and the session can be saved as-is
 
 ### Requirement: Pause and resume a live session
-The system SHALL let the user pause an active session and resume it later. While paused, capture and transcription SHALL pause and the paused period SHALL produce no transcript text; the session SHALL stay open so resuming continues the same transcript.
+The system SHALL let the user pause an active session and resume it later. While paused, capture and transcription SHALL pause and the paused period SHALL produce no transcript text; the session SHALL stay open so resuming continues the same transcript. If the transcription stream was closed while paused (for example after a long pause), resuming SHALL re-establish it before audio flows again, and the transcript SHALL continue in the same session.
 
 #### Scenario: User pauses mid-session
 - **WHEN** the user pauses an active session
@@ -83,7 +83,22 @@ The system SHALL let the user pause an active session and resume it later. While
 
 #### Scenario: User resumes a paused session
 - **WHEN** the user resumes a paused session
-- **THEN** capture and transcription continue in the same session and the transcript continues appending to the same conversation
+- **THEN** capture and transcription continue in the same session, and the transcript continues appending to the same conversation
+
+#### Scenario: Resume after the stream was closed while paused
+- **WHEN** the user resumes a session whose transcription stream was closed while paused
+- **THEN** the stream is re-established before audio flows again and the transcript continues in the same session
+
+### Requirement: A paused session sends no audio and advances no session time
+While paused, the system SHALL NOT send any audio to the transcription API, so a paused period SHALL accrue no transcription cost, and the elapsed session time shown in the app and in the persistent notification SHALL NOT advance.
+
+#### Scenario: No audio sent while paused
+- **WHEN** a live session is paused
+- **THEN** no audio is sent to the transcription API, and the paused period accrues no transcription cost
+
+#### Scenario: Elapsed session time frozen while paused
+- **WHEN** a live session is paused
+- **THEN** the elapsed session time shown in the app and in the persistent notification does not advance until the session resumes
 
 ### Requirement: Check background battery restrictions
 The system SHALL check whether the app is exempt from battery optimization when a session is about to start or while it is active, and SHALL prompt the user to allow unrestricted background activity when it is not, explaining that capture may otherwise be killed while the screen is off.
