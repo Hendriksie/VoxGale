@@ -161,4 +161,84 @@ void main() {
     expect(find.byType(HistoryDetailScreen), findsOneWidget);
     expect(find.text('An imported file'), findsOneWidget);
   });
+
+  /// Pumps a home screen with a button that pushes the history screen, so a
+  /// test can leave and re-enter it (the providers are autoDispose: leaving
+  /// resets them).
+  Future<void> pumpPusherHome(
+    WidgetTester tester,
+    InMemorySessionRepository repository,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sessionRepositoryProvider.overrideWith((ref) => repository),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HistoryScreen(),
+                    ),
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
+
+  testWidgets('reopening the history shows newly saved sessions '
+      '(no search needed)', (tester) async {
+    final repository = InMemorySessionRepository();
+    await pumpPusherHome(tester, repository);
+
+    // First visit: the history is empty.
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('No transcripts yet.'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    // A session is saved elsewhere (file mode / a live session) while the
+    // history screen is away.
+    repository.add(fileSession(), segments('file-1', 'An imported file'));
+
+    // Reopening shows the saved session — the search bar stays empty.
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('interview.mp3'), findsOneWidget);
+    expect(find.text('No transcripts yet.'), findsNothing);
+    expect(find.text('No transcripts match your search.'), findsNothing);
+  });
+
+  testWidgets('reopening the history resets the search query', (tester) async {
+    final repository = InMemorySessionRepository()
+      ..add(liveSession(), segments('live-1', 'the quick brown fox'))
+      ..add(fileSession(), segments('file-1', 'a lazy dog'));
+    await pumpPusherHome(tester, repository);
+
+    // Search filters the list.
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'fox');
+    await tester.pumpAndSettle();
+    expect(find.text('interview.mp3'), findsNothing);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    // Reopening: the search bar is empty and the full history shows.
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Live session'), findsOneWidget);
+    expect(find.text('interview.mp3'), findsOneWidget);
+    expect(find.text('No transcripts match your search.'), findsNothing);
+  });
 }

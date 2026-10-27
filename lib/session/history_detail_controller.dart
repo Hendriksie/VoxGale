@@ -169,6 +169,9 @@ class HistoryDetailController extends Notifier<HistoryDetailState> {
       if (!ref.mounted) {
         return;
       }
+      // The session's status and cost changed — the history list (behind
+      // this screen) must re-read it.
+      ref.invalidate(historyListProvider);
       // Reload: the transcript is replaced, the session is final, the audio
       // is gone — the offer disappears.
       await _load();

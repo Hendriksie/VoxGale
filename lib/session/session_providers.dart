@@ -134,13 +134,19 @@ final fileTranscriptionControllerProvider =
         FileTranscriptionController.new);
 
 /// The history screen's search query (transcript-history spec: search by
-/// text content).
+/// text content). AutoDispose: the query resets when the history screen is
+/// popped, so a reopened screen always starts from an empty search bar.
 final historySearchQueryProvider =
-    NotifierProvider<HistorySearchQuery, String>(HistorySearchQuery.new);
+    NotifierProvider.autoDispose<HistorySearchQuery, String>(
+        HistorySearchQuery.new);
 
 /// The saved sessions for the history list, newest first, filtered by the
-/// search query (transcript-history spec).
-final historyListProvider = FutureProvider<List<StoredSession>>((ref) async {
+/// search query (transcript-history spec). AutoDispose: reopening the
+/// history screen re-runs the query, so newly saved transcripts show up.
+/// The mutation sites (session saves, transcript replacements) also
+/// invalidate this provider while the screen is mounted.
+final historyListProvider = FutureProvider.autoDispose<List<StoredSession>>(
+    (ref) async {
   final query = ref.watch(historySearchQueryProvider);
   return ref
       .read(sessionRepositoryProvider)

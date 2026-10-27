@@ -449,6 +449,49 @@ void main() {
     });
   });
 
+  group('history list invalidation (user report: stale empty history)', () {
+    test('saving the transcription refreshes the history list provider',
+        () async {
+      // The list reflects the repository's saved sessions.
+      final listed = <StoredSession>[];
+      when(() => repository.listSessions(searchQuery: any(named: 'searchQuery')))
+          .thenAnswer((_) async => List.of(listed));
+      // The list provider is kept alive by a listener (as the history
+      // screen would) and captures its data states.
+      final states = <List<StoredSession>>[];
+      final sub = container.listen(
+        historyListProvider,
+        (prev, next) => next.whenOrNull(data: (s) => states.add(s)),
+      );
+      addTearDown(sub.close);
+
+      // Prime the list: the history is empty.
+      await waitFor(() => states.isNotEmpty);
+      expect(states.last, isEmpty);
+
+      // Pick and transcribe; the save lands in the repository.
+      picker.result = pickedFile();
+      prober.duration = const Duration(seconds: 30);
+      controller();
+      await controller().pick();
+      when(() => repository.saveSession(any(), any())).thenAnswer(
+        (invocation) async {
+          listed.add(invocation.positionalArguments[0] as StoredSession);
+        },
+      );
+      when(() => batchClient.transcribe(any()))
+          .thenAnswer((_) async => transcriptionResult());
+      await controller().transcribe();
+
+      // The save invalidated the provider: it re-ran and sees the session.
+      await waitFor(
+        () => states.any((s) => s.any((x) => x.source == StoredSession.sourceFile)),
+      );
+      expect(states.last.single.source, StoredSession.sourceFile);
+      expect(states.last.single.sourceFileName, 'interview.mp3');
+    });
+  });
+
   group('the running estimate (cost-indicator spec)', () {
     test('accrues with the elapsed time while the transcription runs',
         () async {

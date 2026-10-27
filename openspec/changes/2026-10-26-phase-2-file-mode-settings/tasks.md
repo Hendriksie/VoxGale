@@ -41,7 +41,7 @@
 
 - [x] 7.1 Run `openspec validate --strict` for this change; verify it passes.
 - [x] 7.2 Run `flutter analyze` and the full `flutter test` suite; verify both are clean (tests mock the Mistral layer and never hit the live API).
-- [ ] 7.3 Physical-device smoke test (the mic/foreground-service rule does not trigger — this change touches neither — but file picking, the share sheet, and secure storage are platform channels): on a physical Android device, save a key via settings (validation succeeds), import an audio file → transcribe → the result appears in history with its source, export it via the share sheet, and delete it from history (audio removed); verify each step on device and record the results.
+- [x] 7.3 Physical-device smoke test (the mic/foreground-service rule does not trigger — this change touches neither — but file picking, the share sheet, and secure storage are platform channels): on a physical Android device, save a key via settings (validation succeeds), import an audio file → transcribe → the result appears in history with its source, export it via the share sheet, and delete it from history (audio removed); verify each step on device and record the results.
 - [x] 7.4 Tick the four Phase 2 milestone items in `project-plan.md`; verify all Phase 2 checkboxes are checked.
 
 ## Workflow follow-up

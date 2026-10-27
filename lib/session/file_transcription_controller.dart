@@ -437,6 +437,8 @@ class FileTranscriptionController extends Notifier<FileTranscriptionState> {
             ),
         ],
       );
+      // The saved transcription must show up in the history list.
+      ref.invalidate(historyListProvider);
       if (!ref.mounted) {
         return;
       }

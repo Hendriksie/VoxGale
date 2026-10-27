@@ -561,6 +561,9 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         language: result.language ?? state.language,
         error: '',
       );
+      // The session's status and cost changed — the history list must
+      // re-read it.
+      ref.invalidate(historyListProvider);
     } on MistralApiException catch (e) {
       // The provisional transcript is preserved; the audio is kept for the
       // retry.
@@ -844,6 +847,9 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       );
       return;
     }
+    // The saved session must show up in the history list (it may be open
+    // underneath — e.g. the notification's stop ended the session).
+    ref.invalidate(historyListProvider);
 
     // Offer the pass: the estimated cost is the saved audio's duration times
     // the configured batch Mini rate (cost-indicator spec).

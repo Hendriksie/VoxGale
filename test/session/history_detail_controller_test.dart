@@ -363,6 +363,54 @@ void main() {
     });
   });
 
+  group('history list invalidation (user report: stale empty history)', () {
+    test('running the re-offered pass refreshes the history list provider',
+        () async {
+      final audioPath = await writeWav('live-1.wav', 32000 * 30);
+      repository.add(provisionalSession('live-1', audioPath), segments('live-1'));
+      // The list provider is kept alive by a listener (as the history
+      // screen would) and captures its data states.
+      final states = <List<StoredSession>>[];
+      final sub = container.listen(
+        historyListProvider,
+        (prev, next) => next.whenOrNull(data: (s) => states.add(s)),
+      );
+      addTearDown(sub.close);
+
+      // Prime the list: the session is provisional.
+      await waitFor('live-1', () => states.isNotEmpty);
+      expect(states.last.single.status, SessionStatus.provisional);
+
+      when(() => batchClient.transcribe(any())).thenAnswer(
+        (_) async => const BatchTranscriptionResult(
+          text: 'Hello world',
+          segments: [
+            TranscriptSegment(
+              text: 'Hello world',
+              speakerId: 'speaker_1',
+              start: 0,
+              end: 2,
+            ),
+          ],
+          language: 'en',
+          model: 'voxtral-mini-transcribe-3-0',
+          usage: Usage(promptAudioSeconds: 30),
+        ),
+      );
+      controller('live-1');
+      await waitFor('live-1', () => !state('live-1').loading);
+      await controller('live-1').runPass();
+
+      // The pass invalidated the provider: it re-ran and sees the final
+      // session.
+      await waitFor(
+        'live-1',
+        () => states.any((s) => s.isNotEmpty && s.single.status == SessionStatus.finalized),
+      );
+      expect(states.last.single.status, SessionStatus.finalized);
+    });
+  });
+
   group('delete (transcript-history spec)', () {
     test('removes the transcript from the repository', () async {
       repository.add(finalSession('file-1'), segments('file-1'));

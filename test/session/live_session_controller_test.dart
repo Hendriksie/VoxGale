@@ -847,4 +847,98 @@ void main() {
       expect(state().sessionId, isNot(firstSessionId));
     });
   });
+
+  group('history list invalidation (user report: stale empty history)', () {
+    test('finalizing a session refreshes the history list provider', () async {
+      // The list reflects the repository's saved sessions.
+      final listed = <StoredSession>[];
+      when(() => repository.listSessions(searchQuery: any(named: 'searchQuery')))
+          .thenAnswer((_) async => List.of(listed));
+      // The list provider is kept alive by a listener (as the history
+      // screen would) and captures its data states.
+      final states = <List<StoredSession>>[];
+      final sub = container.listen(
+        historyListProvider,
+        (prev, next) => next.whenOrNull(data: (s) => states.add(s)),
+      );
+      addTearDown(sub.close);
+
+      // Prime the list: the history is empty.
+      await waitFor(() => states.isNotEmpty);
+      expect(states.last, isEmpty);
+
+      // A session runs and finalizes (saved to the repository).
+      await startActiveSession();
+      when(() => repository.saveSession(any(), any())).thenAnswer(
+        (invocation) async {
+          listed.add(invocation.positionalArguments[0] as StoredSession);
+        },
+      );
+      await finalizeToPassOffered();
+
+      // The save invalidated the provider: it re-ran and sees the session.
+      await waitFor(() => states.any((s) => s.length == 1));
+      expect(states.last.single.status, SessionStatus.provisional);
+    });
+
+    test('running the diarization pass refreshes the history list provider',
+        () async {
+      // The list reflects the repository's saved sessions.
+      final listed = <StoredSession>[];
+      when(() => repository.listSessions(searchQuery: any(named: 'searchQuery')))
+          .thenAnswer((_) async => List.of(listed));
+      // The list provider is kept alive by a listener (as the history
+      // screen would) and captures its data states.
+      final states = <List<StoredSession>>[];
+      final sub = container.listen(
+        historyListProvider,
+        (prev, next) => next.whenOrNull(data: (s) => states.add(s)),
+      );
+      addTearDown(sub.close);
+      await waitFor(() => states.isNotEmpty);
+
+      await startActiveSession();
+      when(() => repository.saveSession(any(), any())).thenAnswer(
+        (invocation) async {
+          listed.add(invocation.positionalArguments[0] as StoredSession);
+        },
+      );
+      final audioPath = await finalizeToPassOffered();
+      stubBatchSuccess();
+      when(() => repository.replaceTranscript(
+            any(),
+            any(),
+            billedAudioSeconds: any(named: 'billedAudioSeconds'),
+            actualCost: any(named: 'actualCost'),
+          )).thenAnswer((invocation) async {
+        final session = listed.single;
+        listed
+          ..clear()
+          ..add(StoredSession(
+            id: session.id,
+            startedAt: session.startedAt,
+            durationSeconds: session.durationSeconds,
+            model: session.model,
+            status: SessionStatus.finalized,
+            billedAudioSeconds:
+                invocation.namedArguments[#billedAudioSeconds] as int,
+            actualCost: invocation.namedArguments[#actualCost] as double,
+            language: session.language,
+            audioPath: session.audioPath,
+            source: session.source,
+            sourceFileName: session.sourceFileName,
+          ));
+      });
+
+      await controller().runDiarizationPass();
+
+      // The pass invalidated the provider: it re-ran and sees the final
+      // session.
+      await waitFor(
+        () => states.any((s) => s.isNotEmpty && s.single.status == SessionStatus.finalized),
+      );
+      expect(states.last.single.status, SessionStatus.finalized);
+      expect(await File(audioPath).exists(), isFalse);
+    });
+  });
 }
