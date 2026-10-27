@@ -21,10 +21,10 @@
 
 ## 4. Tests: coverage audit, gap fill, live-flow integration test (design P3-D4, test-coverage spec)
 
-- [ ] 4.1 Audit `test/mistral/` against the test-coverage spec's list (realtime: session setup, audio chunking, event parsing, error mapping, reconnect/buffer; batch: multipart params, diarization params, timeouts, auth/quota/limit error kinds); verify every listed behavior has a named test or a recorded gap.
-- [ ] 4.2 Fill the realtime client gaps with mocked-transport unit tests (mocktail over the WebSocket channel); verify `flutter test test/mistral/` passes and no test opens a network connection.
-- [ ] 4.3 Fill the batch client gaps with mocked-HTTP unit tests (request parameters, timeouts, error kinds, no retry of non-retryable failures); verify `flutter test test/mistral/` passes and no test opens a network connection.
-- [ ] 4.4 Add `test/integration/live_flow_test.dart` as a plain `test()` (the `testWidgets` + real `dart:io` deadlock gotcha): start → fake realtime text deltas → stop → the finalized session appears in history over the in-memory Drift database, plus a mid-session failure case asserting the text so far is preserved with an error state; verify `flutter test test/integration/` passes with no network.
+- [x] 4.1 Audit `test/mistral/` against the test-coverage spec's list (realtime: session setup, audio chunking, event parsing, error mapping, reconnect/buffer; batch: multipart params, diarization params, timeouts, auth/quota/limit error kinds); verify every listed behavior has a named test or a recorded gap.
+- [x] 4.2 Fill the realtime client gaps with mocked-transport unit tests (mocktail over the WebSocket channel); verify `flutter test test/mistral/` passes and no test opens a network connection.
+- [x] 4.3 Fill the batch client gaps with mocked-HTTP unit tests (request parameters, timeouts, error kinds, no retry of non-retryable failures); verify `flutter test test/mistral/` passes and no test opens a network connection.
+- [x] 4.4 Add `test/integration/live_flow_test.dart` as a plain `test()` (the `testWidgets` + real `dart:io` deadlock gotcha): start → fake realtime text deltas → stop → the finalized session appears in history over the in-memory Drift database, plus a mid-session failure case asserting the text so far is preserved with an error state; verify `flutter test test/integration/` passes with no network.
 
 ## 5. App icon (design P3-D5, app-icon spec)
 

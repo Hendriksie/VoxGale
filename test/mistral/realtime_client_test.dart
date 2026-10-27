@@ -1,3 +1,33 @@
+// Coverage audit (Phase 3 group 4, task 4.1 — test-coverage spec). The
+// spec's list for the realtime client, and where each item lives:
+//   session setup ...... 'full lifecycle' (the session.update before any
+//                        audio, the auth header, the model in the URI) and
+//                        'session setup: one session.update, full config,
+//                        before the first chunk' (the settings lock, pinned)
+//   audio chunking ..... 'full lifecycle' (base64 input_audio.append frames),
+//                        'oversized audio chunks are split into multiple
+//                        messages', 'keep-alive feeds silence when the mic
+//                        stops delivering' (the cadence cases)
+//   event parsing ...... realtime_events_test.dart (every event type) plus
+//                        the client-level delta/turn/done assertions in
+//                        'full lifecycle', 'diarize mode ...', and the two
+//                        tests this group added: 'a server error event
+//                        surfaces ...' and 'malformed JSON and non-text
+//                        frames are ignored'
+//   error mapping ...... 'a connection failure surfaces a sanitized
+//                        MistralApiException' (the start path), 'a server
+//                        error event surfaces ...' (the mapped event, never
+//                        the key), 'a mid-session stream error is sanitized
+//                        ...' (the reconnect path)
+//   reconnect/buffer ... 'reconnects with the identical config and replays
+//                        buffered audio', 'drops the oldest buffered audio
+//                        beyond the cap and emits BufferedAudioDropped'
+// Gaps the audit found and this group filled: the client-level mapping of a
+// server error event (message + code, no key), client-level handling of
+// malformed/non-text frames, the precise one-update-before-audio lock, and
+// sanitization of a mid-session stream error that echoes the Authorization
+// header. No production-code change was needed.
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -52,7 +82,7 @@ void main() {
   }
 
   MockWebSocketChannel mockChannel(
-    StreamController<String> incoming,
+    StreamController<dynamic> incoming,
     RecordingWebSocketSink sink,
   ) {
     final channel = MockWebSocketChannel();
@@ -490,5 +520,232 @@ void main() {
             .having((e) => e.message, 'message', isNot(contains(secret))),
       ),
     );
+  });
+
+  test('session setup: one session.update, carrying the full selected '
+      'config, goes out before the first audio chunk (the settings lock)',
+      () async {
+    final incoming = StreamController<String>();
+    final sink = RecordingWebSocketSink();
+    final channel = mockChannel(incoming, sink);
+
+    final client = WebSocketRealtimeClient(
+      apiKey: 'test-key',
+      config: MistralConfig.defaults,
+      keepAliveAfter: null,
+      channelFactory: (uri, headers) => channel,
+    );
+
+    final sessionFuture = client.startSession(RealtimeSessionConfig(
+      language: 'de',
+      contextBias: ['Northwind'],
+      turnDetection: const TurnDetectionConfig(endThreshold: 0.4),
+    ));
+    incoming.add(jsonEncode({'type': 'session.created', 'session': {}}));
+    incoming.add(jsonEncode({
+      'type': 'session.updated',
+      'session': {'language': 'de'},
+    }));
+    final session = await sessionFuture;
+
+    // Exactly one update, carrying every selected setting, and nothing else
+    // has gone out — no audio before the server confirmed the session (the
+    // settings lock after the first audio chunk).
+    final messages = sink.jsonMessages();
+    expect(messages, hasLength(1));
+    final update = messages.single;
+    expect(update['type'], 'session.update');
+    expect(update['session'], {
+      'audio_format': {'encoding': 'pcm_s16le', 'sample_rate': 16000},
+      'target_streaming_delay_ms': 480,
+      'language': 'de',
+      'context_bias': ['Northwind'],
+      'turn_detection': {'end_threshold': 0.4},
+    });
+
+    session.sendAudio(Uint8List.fromList([1, 2, 3]));
+    final withAudio = sink.jsonMessages();
+    expect(withAudio, hasLength(2));
+    expect(withAudio[1]['type'], 'input_audio.append');
+    // Still exactly one session.update once audio is flowing.
+    expect(
+      withAudio.where((m) => m['type'] == 'session.update'),
+      hasLength(1),
+    );
+
+    await session.dispose();
+    await incoming.close();
+  });
+
+  test('a server error event surfaces as a RealtimeError with the mapped '
+      'message and code, never the API key', () async {
+    const secret = 'sk-super-secret';
+    final incoming = StreamController<String>();
+    final sink = RecordingWebSocketSink();
+    final channel = mockChannel(incoming, sink);
+
+    final client = WebSocketRealtimeClient(
+      apiKey: secret,
+      config: MistralConfig.defaults,
+      keepAliveAfter: null,
+      channelFactory: (uri, headers) => channel,
+    );
+    final sessionFuture = client.startSession(RealtimeSessionConfig());
+    incoming.add(jsonEncode({'type': 'session.created', 'session': {}}));
+    incoming.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+    final session = await sessionFuture;
+
+    final events = <RealtimeEvent>[];
+    final sub = session.events.listen(events.add);
+
+    incoming.add(jsonEncode({
+      'type': 'error',
+      'error': {
+        'message': 'Diarization is not compatible with turn detection.',
+        'code': 'invalid_session_config',
+      },
+    }));
+    await pumpEventQueue();
+
+    final error = events.whereType<RealtimeError>().single;
+    expect(error.message, 'Diarization is not compatible with turn detection.');
+    expect(error.code, 'invalid_session_config');
+    // The key travels only in the Authorization header — never in an event.
+    expect(error.message, isNot(contains(secret)));
+
+    // The error event does not tear the session down: text keeps flowing.
+    incoming.add(
+        jsonEncode({'type': 'transcription.text.delta', 'text': ' ok'}));
+    await pumpEventQueue();
+    expect(events.whereType<TextDelta>().single.text, ' ok');
+
+    final doneFuture = session.end();
+    incoming.add(jsonEncode({
+      'type': 'transcription.done',
+      'text': ' ok',
+      'segments': [],
+      'language': 'en',
+      'model': 'voxtral-mini-transcribe-realtime-3-0',
+      'usage': {'prompt_audio_seconds': 1},
+    }));
+    await doneFuture;
+
+    await sub.cancel();
+    await session.dispose();
+    await incoming.close();
+  });
+
+  test('malformed JSON and non-text frames are ignored — the session keeps '
+      'streaming', () async {
+    // A dynamic controller: the WebSocket also carries binary frames.
+    final incoming = StreamController<dynamic>();
+    final sink = RecordingWebSocketSink();
+    final channel = mockChannel(incoming, sink);
+
+    final client = WebSocketRealtimeClient(
+      apiKey: 'test-key',
+      config: MistralConfig.defaults,
+      keepAliveAfter: null,
+      channelFactory: (uri, headers) => channel,
+    );
+    final sessionFuture = client.startSession(RealtimeSessionConfig());
+    incoming.add(jsonEncode({'type': 'session.created', 'session': {}}));
+    incoming.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+    final session = await sessionFuture;
+
+    final events = <RealtimeEvent>[];
+    final sub = session.events.listen(events.add);
+
+    // A binary frame (the protocol is JSON text), a non-JSON text frame, a
+    // JSON value that is not an object, and an unknown event type: all are
+    // ignored without disturbing the session.
+    incoming.add(Uint8List.fromList([1, 2, 3]));
+    incoming.add('this is not json');
+    incoming.add('42');
+    incoming.add(jsonEncode({'type': 'some.future.event'}));
+    await pumpEventQueue();
+    expect(events, isEmpty);
+
+    // The stream is unharmed: the next real event parses.
+    incoming.add(jsonEncode({'type': 'transcription.text.delta', 'text': ' hi'}));
+    await pumpEventQueue();
+    expect(events.whereType<TextDelta>().single.text, ' hi');
+
+    final doneFuture = session.end();
+    incoming.add(jsonEncode({
+      'type': 'transcription.done',
+      'text': ' hi',
+      'segments': [],
+      'language': 'en',
+      'model': 'voxtral-mini-transcribe-realtime-3-0',
+      'usage': {'prompt_audio_seconds': 1},
+    }));
+    await doneFuture;
+
+    await sub.cancel();
+    await session.dispose();
+    await incoming.close();
+  });
+
+  test('a mid-session stream error is sanitized before it surfaces — never '
+      'the API key — and the session reconnects', () async {
+    const secret = 'sk-super-secret';
+    final incoming1 = StreamController<String>();
+    final incoming2 = StreamController<String>();
+    final sink1 = RecordingWebSocketSink();
+    final sink2 = RecordingWebSocketSink();
+    final channel1 = mockChannel(incoming1, sink1);
+    final channel2 = mockChannel(incoming2, sink2);
+
+    var call = 0;
+    final client = WebSocketRealtimeClient(
+      apiKey: secret,
+      config: MistralConfig.defaults,
+      keepAliveAfter: null,
+      reconnectDelay: const Duration(milliseconds: 10),
+      channelFactory: (uri, headers) => [channel1, channel2][call++],
+    );
+
+    final sessionFuture = client.startSession(RealtimeSessionConfig());
+    incoming1.add(jsonEncode({'type': 'session.created', 'session': {}}));
+    incoming1.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+    final session = await sessionFuture;
+
+    final events = <RealtimeEvent>[];
+    final sub = session.events.listen(events.add);
+
+    // The transport's error string embeds the request headers — the client
+    // must redact the key before the error reaches the UI.
+    incoming1.addError(
+      Exception('connection reset (Authorization: Bearer $secret)'),
+    );
+    await waitFor(() => events.whereType<RealtimeError>().isNotEmpty);
+
+    final error = events.whereType<RealtimeError>().single;
+    expect(error.message, contains('connection reset'));
+    expect(error.message, isNot(contains(secret)));
+
+    // The client reconnects; the session keeps running.
+    await waitFor(() => call == 2);
+    incoming2.add(jsonEncode({'type': 'session.created', 'session': {}}));
+    await pumpEventQueue();
+    incoming2.add(jsonEncode({'type': 'session.updated', 'session': {}}));
+    await waitFor(() => events.whereType<Reconnected>().isNotEmpty);
+
+    final doneFuture = session.end();
+    incoming2.add(jsonEncode({
+      'type': 'transcription.done',
+      'text': '',
+      'segments': [],
+      'language': 'en',
+      'model': 'voxtral-mini-transcribe-realtime-3-0',
+      'usage': {'prompt_audio_seconds': 1},
+    }));
+    await doneFuture;
+
+    await sub.cancel();
+    await session.dispose();
+    await incoming1.close();
+    await incoming2.close();
   });
 }
