@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mistral orange #FF7000 — the brand color of lib/app/theme.dart
+         (mistralOrange). Solid background layer of the adaptive launcher
+         icon (API 26+); the foreground drawable supplies the white glyph. -->
+    <color name="ic_launcher_background">#FF7000</color>
+</resources>

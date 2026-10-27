@@ -28,8 +28,8 @@
 
 ## 5. App icon (design P3-D5, app-icon spec)
 
-- [ ] 5.1 Design the orange glyph (a simple microphone/waveform mark on Mistral orange #FF7000, legible at mdpi) and generate the five density PNGs into `android/app/src/main/res/mipmap-*/ic_launcher.png`; verify each file exists at the right size (48/72/96/144/192 px).
-- [ ] 5.2 Add `mipmap-anydpi-v26/ic_launcher.xml` (adaptive icon: vector foreground drawable + solid orange background) and the foreground drawable under `res/drawable/`; verify the XML is well-formed and references resolve via a successful `flutter build apk --debug`.
+- [x] 5.1 Design the orange glyph (a simple microphone/waveform mark on Mistral orange #FF7000, legible at mdpi) and generate the five density PNGs into `android/app/src/main/res/mipmap-*/ic_launcher.png`; verify each file exists at the right size (48/72/96/144/192 px).
+- [x] 5.2 Add `mipmap-anydpi-v26/ic_launcher.xml` (adaptive icon: vector foreground drawable + solid orange background) and the foreground drawable under `res/drawable/`; verify the XML is well-formed and references resolve via a successful `flutter build apk --debug`.
 
 ## 6. Integration checks
 
