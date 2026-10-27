@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:voxtral_live/mistral/mistral.dart';
+import 'package:voxtral_live/session/audio_focus_gateway.dart';
 import 'package:voxtral_live/session/capture_service.dart';
 import 'package:voxtral_live/session/live_session_controller.dart';
 import 'package:voxtral_live/session/session_models.dart';
@@ -74,6 +75,35 @@ class FakeSessionClock implements SessionClock {
   void tick() => tickController.add(0);
 }
 
+/// A fake [AudioFocusGateway] (design P3-D2): records configuration and
+/// release, and lets the test emit focus events.
+class FakeAudioFocusGateway implements AudioFocusGateway {
+  // Sync: focus events are delivered to the controller's listener
+  // immediately.
+  final StreamController<AudioFocusEvent> focusController =
+      StreamController<AudioFocusEvent>.broadcast(sync: true);
+
+  int configureCount = 0;
+  int releaseCount = 0;
+
+  @override
+  Future<void> configureForRecord() async {
+    configureCount++;
+  }
+
+  @override
+  Stream<AudioFocusEvent> get focusEvents => focusController.stream;
+
+  @override
+  Future<void> release() async {
+    releaseCount++;
+  }
+
+  void emit(AudioFocusEvent event) => focusController.add(event);
+
+  Future<void> dispose() => focusController.close();
+}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(RealtimeSessionConfig());
@@ -105,6 +135,7 @@ void main() {
   late MockBatchTranscriptionClient batchClient;
   late FakeApiKeyStore apiKeyStore;
   late FakeSessionClock clock;
+  late FakeAudioFocusGateway audioFocus;
   late StreamController<SessionEvent> eventController;
   late ProviderContainer container;
   late Directory tempDir;
@@ -262,6 +293,7 @@ void main() {
     batchClient = MockBatchTranscriptionClient();
     apiKeyStore = FakeApiKeyStore()..key = 'test-key';
     clock = FakeSessionClock();
+    audioFocus = FakeAudioFocusGateway();
     startSessionAnswer = () async => null;
     // Sync: events are delivered to the controller's listener immediately.
     eventController = StreamController<SessionEvent>.broadcast(sync: true);
@@ -279,6 +311,7 @@ void main() {
         batchTranscriptionClientProvider.overrideWith((ref) async => batchClient),
         sessionClockProvider.overrideWith((ref) => clock),
         foregroundTaskGatewayProvider.overrideWith((ref) => gateway),
+        audioFocusGatewayProvider.overrideWith((ref) => audioFocus),
         sessionFinalizeTimeoutProvider.overrideWith(
           (ref) => const Duration(milliseconds: 100),
         ),
@@ -289,6 +322,7 @@ void main() {
   tearDown(() async {
     container.dispose();
     await eventController.close();
+    await audioFocus.dispose();
     await tempDir.delete(recursive: true);
   });
 
@@ -610,6 +644,125 @@ void main() {
       await controller().pause();
       await controller().pause(); // already paused — no-op
       verify(() => captureService.pause()).called(1);
+    });
+  });
+
+  group('audio focus (3.2)', () {
+    test('focus loss pauses the session through the existing pause path and '
+        'keeps the session open; focus gain resumes into the same '
+        'transcript', () async {
+      await startActiveSession();
+      eventController.add(const SessionTextDelta('Hello '));
+
+      audioFocus.emit(AudioFocusEvent.lost);
+      await waitFor(() => state().phase == LiveSessionPhase.paused);
+
+      // The existing pause path: the capture service pauses, the phase
+      // becomes paused, and the session (and its transcript) stays open.
+      verify(() => captureService.pause()).called(1);
+      expect(state().pausedByAudioFocus, isTrue);
+      expect(state().sessionId, startedSessionId);
+      expect(state().turns, [const TranscriptTurn(text: 'Hello ')]);
+
+      audioFocus.emit(AudioFocusEvent.gained);
+      await waitFor(() => state().phase == LiveSessionPhase.active);
+
+      verify(() => captureService.resume()).called(1);
+      expect(state().pausedByAudioFocus, isFalse);
+      expect(state().sessionId, startedSessionId);
+
+      // The transcript continues in the same session.
+      eventController.add(const SessionTextDelta('world'));
+      expect(state().turns, [const TranscriptTurn(text: 'Hello world')]);
+    });
+
+    test('a user-paused session stays paused across a focus loss and gain',
+        () async {
+      await startActiveSession();
+      await controller().pause();
+
+      // The focus loss does not pause again (the session is already
+      // paused) and does not claim the pause.
+      audioFocus.emit(AudioFocusEvent.lost);
+      await Future<void>.delayed(Duration.zero);
+      expect(state().phase, LiveSessionPhase.paused);
+      expect(state().pausedByAudioFocus, isFalse);
+
+      // The focus return does not resume a user pause.
+      audioFocus.emit(AudioFocusEvent.gained);
+      await Future<void>.delayed(Duration.zero);
+      expect(state().phase, LiveSessionPhase.paused);
+
+      // Exactly one pause command (the user's) and no resume command.
+      verify(() => captureService.pause()).called(1);
+      verifyNever(() => captureService.resume());
+    });
+
+    test('a manual resume while focus-paused clears the audio-focus flag, '
+        'and the focus return is then a no-op', () async {
+      await startActiveSession();
+      audioFocus.emit(AudioFocusEvent.lost);
+      await waitFor(() => state().phase == LiveSessionPhase.paused);
+      expect(state().pausedByAudioFocus, isTrue);
+
+      // The user resumes before focus returns.
+      await controller().resume();
+      expect(state().phase, LiveSessionPhase.active);
+      expect(state().pausedByAudioFocus, isFalse);
+
+      audioFocus.emit(AudioFocusEvent.gained);
+      await Future<void>.delayed(Duration.zero);
+      verify(() => captureService.resume()).called(1);
+      expect(state().phase, LiveSessionPhase.active);
+    });
+
+    test('configures the audio session for record at start and releases it '
+        'when the session ends', () async {
+      await startActiveSession();
+      expect(audioFocus.configureCount, 1);
+      expect(audioFocus.releaseCount, 0);
+
+      await finalizeToPassOffered();
+
+      expect(audioFocus.releaseCount, 1);
+    });
+
+    test('no focus events means no pause/resume commands', () async {
+      await startActiveSession();
+
+      clock.tick();
+
+      expect(state().phase, LiveSessionPhase.active);
+      verifyNever(() => captureService.pause());
+      verifyNever(() => captureService.resume());
+    });
+
+    test('focus events are ignored when no session is active', () async {
+      audioFocus.emit(AudioFocusEvent.lost);
+      audioFocus.emit(AudioFocusEvent.gained);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(state().phase, LiveSessionPhase.idle);
+      verifyNever(() => captureService.pause());
+      verifyNever(() => captureService.resume());
+    });
+
+    test('disposing the controller cancels the focus subscription and '
+        'releases the audio session', () async {
+      await startActiveSession();
+      expect(audioFocus.configureCount, 1);
+      expect(audioFocus.releaseCount, 0);
+
+      // Disposing the container disposes the controller (Riverpod's
+      // dispose is a no-op on the second call in tearDown).
+      container.dispose();
+
+      expect(audioFocus.releaseCount, 1);
+      // The subscription is cancelled: focus events no longer reach the
+      // controller.
+      audioFocus.emit(AudioFocusEvent.lost);
+      await Future<void>.delayed(Duration.zero);
+      verifyNever(() => captureService.pause());
     });
   });
 

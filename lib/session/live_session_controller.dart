@@ -6,6 +6,13 @@
 // stop (persistence + the pass offer), and runs the post-session
 // diarization pass. The UI renders [LiveSessionState] directly.
 //
+// Audio focus (design P3-D2, live-transcription "Respect audio focus"): when
+// the session becomes active the controller configures the platform audio
+// session for recording through the [AudioFocusGateway] seam; a focus loss
+// pauses capture through the same pause path a user pause uses, and the
+// focus return resumes — unless the user paused. The state's
+// [LiveSessionState.pausedByAudioFocus] flag lets the UI word the pause.
+//
 // The controller depends only on the Mistral interfaces, [MistralConfig],
 // the domain value objects, the [SessionRepository] interface, and the
 // [CaptureService] wrapper. The API key itself is never read here — only its
@@ -18,6 +25,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../mistral/mistral.dart';
 import '../storage/storage.dart';
+import 'audio_focus_gateway.dart';
 import 'capture_service.dart';
 import 'diarization_pass.dart';
 import 'session_models.dart';
@@ -144,6 +152,7 @@ class LiveSessionState {
     this.error = '',
     this.missingApiKey = false,
     this.batteryPromptNeeded = false,
+    this.pausedByAudioFocus = false,
   });
 
   /// Where the session is in its lifecycle — see [LiveSessionPhase].
@@ -213,6 +222,12 @@ class LiveSessionState {
   /// the prompt (the session is never blocked on it).
   final bool batteryPromptNeeded;
 
+  /// Whether the current pause was caused by another app taking audio focus
+  /// (design P3-D2, live-transcription "Respect audio focus") — the UI
+  /// words it differently from a user pause. Only meaningful in the
+  /// [LiveSessionPhase.paused] phase.
+  final bool pausedByAudioFocus;
+
   /// Whether [error] carries a message.
   bool get hasError => error.isNotEmpty;
 
@@ -237,6 +252,7 @@ class LiveSessionState {
     String? error,
     bool? missingApiKey,
     bool? batteryPromptNeeded,
+    bool? pausedByAudioFocus,
   }) =>
       LiveSessionState(
         phase: phase ?? this.phase,
@@ -257,6 +273,7 @@ class LiveSessionState {
         error: error ?? this.error,
         missingApiKey: missingApiKey ?? this.missingApiKey,
         batteryPromptNeeded: batteryPromptNeeded ?? this.batteryPromptNeeded,
+        pausedByAudioFocus: pausedByAudioFocus ?? this.pausedByAudioFocus,
       );
 
   @override
@@ -279,6 +296,7 @@ class LiveSessionState {
           error == other.error &&
           missingApiKey == other.missingApiKey &&
           batteryPromptNeeded == other.batteryPromptNeeded &&
+          pausedByAudioFocus == other.pausedByAudioFocus &&
           turns.length == other.turns.length &&
           _turnsEqual(other) &&
           gapMarkers.length == other.gapMarkers.length &&
@@ -303,7 +321,8 @@ class LiveSessionState {
   }
 
   @override
-  int get hashCode => Object.hash(
+  // Object.hash takes at most 20 positional arguments — hash the field list.
+  int get hashCode => Object.hashAll([
         phase,
         turns.length,
         Object.hashAll(turns),
@@ -324,7 +343,8 @@ class LiveSessionState {
         error,
         missingApiKey,
         batteryPromptNeeded,
-      );
+        pausedByAudioFocus,
+      ]);
 }
 
 /// The clock + ticker driving the elapsed-time display. Injected so
@@ -360,6 +380,11 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     ref.onDispose(() {
       _eventSub?.cancel();
       _tickSub?.cancel();
+      _focusSub?.cancel();
+      // Release the audio session if the provider is disposed mid-session
+      // (the session-end teardown normally already released it).
+      unawaited(_audioFocusGateway?.release());
+      _audioFocusGateway = null;
     });
     return const LiveSessionState();
   }
@@ -368,6 +393,8 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
   StreamSubscription<SessionEvent>? _eventSub;
   StreamSubscription<int>? _tickSub;
+  StreamSubscription<AudioFocusEvent>? _focusSub;
+  AudioFocusGateway? _audioFocusGateway;
   Completer<void>? _sessionEnded;
   DateTime? _startedAt;
   String? _audioPath;
@@ -476,26 +503,37 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       return; // a SessionError from the service already failed the start
     }
     state = state.copyWith(phase: LiveSessionPhase.active);
+    // The session is capturing: configure the platform audio session for
+    // recording and listen for focus changes (design P3-D2).
+    await _startAudioFocusHandling();
   }
 
   /// Pauses capture and transcription; the realtime session stays open
   /// (design P1-D2). No-op unless the phase is [LiveSessionPhase.active].
+  /// Clears [LiveSessionState.pausedByAudioFocus] — a user pause is not an
+  /// audio-focus pause.
   Future<void> pause() async {
     if (state.phase != LiveSessionPhase.active) {
       return;
     }
     ref.read(captureServiceProvider).pause();
-    state = state.copyWith(phase: LiveSessionPhase.paused);
+    state = state.copyWith(
+      phase: LiveSessionPhase.paused,
+      pausedByAudioFocus: false,
+    );
   }
 
   /// Resumes a paused session. No-op unless the phase is
-  /// [LiveSessionPhase.paused].
+  /// [LiveSessionPhase.paused]. Clears [LiveSessionState.pausedByAudioFocus].
   Future<void> resume() async {
     if (state.phase != LiveSessionPhase.paused) {
       return;
     }
     ref.read(captureServiceProvider).resume();
-    state = state.copyWith(phase: LiveSessionPhase.active);
+    state = state.copyWith(
+      phase: LiveSessionPhase.active,
+      pausedByAudioFocus: false,
+    );
   }
 
   /// Stops the session gracefully: the service ends the realtime session,
@@ -714,6 +752,51 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     );
   }
 
+  // -- Audio focus (design P3-D2, task 3.2) ----------------------------------
+
+  /// Configures the platform audio session for recording and subscribes to
+  /// focus changes (live-transcription spec "Respect audio focus"). Called
+  /// when the session becomes active; the symmetric [_stopAudioFocusHandling]
+  /// runs at teardown.
+  Future<void> _startAudioFocusHandling() async {
+    final gateway = ref.read(audioFocusGatewayProvider);
+    _audioFocusGateway = gateway;
+    await gateway.configureForRecord();
+    _focusSub = gateway.focusEvents.listen(
+      (event) => unawaited(_onAudioFocusEvent(event)),
+    );
+  }
+
+  /// Cancels the focus subscription and releases the audio session (the
+  /// symmetric teardown of [_startAudioFocusHandling]).
+  Future<void> _stopAudioFocusHandling() async {
+    await _focusSub?.cancel();
+    _focusSub = null;
+    final gateway = _audioFocusGateway;
+    _audioFocusGateway = null;
+    await gateway?.release();
+  }
+
+  /// A platform audio-focus change (design P3-D2): a focus loss pauses
+  /// capture through the existing pause path — the capture service pauses,
+  /// the phase becomes paused, the session stays open — and a focus return
+  /// resumes, but only when the pause was caused by the focus loss (a
+  /// user-paused session stays paused). Ignored when no session is active.
+  Future<void> _onAudioFocusEvent(AudioFocusEvent event) async {
+    switch (event) {
+      case AudioFocusEvent.lost:
+        if (state.phase == LiveSessionPhase.active) {
+          await pause();
+          state = state.copyWith(pausedByAudioFocus: true);
+        }
+      case AudioFocusEvent.gained:
+        if (state.phase == LiveSessionPhase.paused &&
+            state.pausedByAudioFocus) {
+          await resume();
+        }
+    }
+  }
+
   // -- Turn grouping (design P1-D7) -----------------------------------------
 
   /// Appends one piece of transcript text to the current turn, starting a new
@@ -916,6 +999,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     _eventSub = null;
     await _tickSub?.cancel();
     _tickSub = null;
+    await _stopAudioFocusHandling();
     _sessionEnded = null;
     _startedAt = null;
     _audioPath = null;

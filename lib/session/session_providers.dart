@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../mistral/mistral.dart';
 import '../storage/storage.dart';
+import 'audio_focus_gateway.dart';
 import 'capture_service.dart';
 import 'diarization_pass.dart';
 import 'file_transcription_controller.dart';
@@ -107,6 +108,15 @@ final captureServiceProvider =
 /// (Phase 3 group 2); the gateway prompts natively via the `record` package.
 final foregroundTaskGatewayProvider =
     Provider<ForegroundTaskGateway>((ref) => PluginForegroundTaskGateway());
+
+/// The audio-focus gateway behind the live session controller (design
+/// P3-D2, task 3.1): the platform seam for audio-focus management. The
+/// controller configures the audio session for recording when a capture
+/// session becomes active, pauses capture when another app takes audio
+/// focus (e.g. an incoming phone call), and resumes when focus returns
+/// (live-transcription spec "Respect audio focus").
+final audioFocusGatewayProvider =
+    Provider<AudioFocusGateway>((ref) => AudioSessionFocusGateway());
 
 /// The clock driving the elapsed-time display.
 final sessionClockProvider =

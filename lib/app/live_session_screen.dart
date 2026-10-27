@@ -2,9 +2,11 @@
 // the screen renders [LiveSessionState] directly and owns no session logic;
 // every action goes through [LiveSessionController]. The status row carries
 // the elapsed time, the estimated cost (live) or the actual usage (after the
-// stop, including the post-session pass's), and the subtle connection-status
-// indicator. The transcript is turn-grouped with provisional-vs-finalized
-// styling and visible gap markers (transcript_widgets.dart).
+// stop, including the post-session pass's), the pause indication (worded
+// differently when another app took audio focus), and the subtle
+// connection-status indicator. The transcript is turn-grouped with
+// provisional-vs-finalized styling and visible gap markers
+// (transcript_widgets.dart).
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -114,8 +116,9 @@ class LiveSessionScreen extends ConsumerWidget {
 }
 
 /// The status row under the app bar: elapsed time (duration once the session
-/// ended), the live cost estimate or the actual billed usage, and the subtle
-/// connection-status indicator — outside the transcript text
+/// ended), the live cost estimate or the actual billed usage, the pause
+/// indication (worded differently when another app took audio focus), and
+/// the subtle connection-status indicator — outside the transcript text
 /// (live-transcription spec).
 class _StatusRow extends StatelessWidget {
   const _StatusRow({required this.state});
@@ -136,6 +139,16 @@ class _StatusRow extends StatelessWidget {
     final seconds = running ? state.elapsedSeconds : state.durationSeconds;
     final cost = _costText(state, running: running);
     final connection = _connectionInfo(state.connection);
+    // A pause caused by another app taking audio focus (design P3-D2,
+    // live-transcription "Respect audio focus") is worded differently from
+    // a user pause.
+    final pausedText = switch (state.phase) {
+      LiveSessionPhase.paused =>
+        state.pausedByAudioFocus
+            ? 'Paused — another app is using audio'
+            : 'Paused',
+      _ => null,
+    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
@@ -148,6 +161,15 @@ class _StatusRow extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               cost,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (pausedText != null) ...[
+            const SizedBox(width: 8),
+            Text(
+              pausedText,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

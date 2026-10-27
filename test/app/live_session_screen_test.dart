@@ -1,11 +1,12 @@
 // Widget tests for the live session screen (tasks 5.1, 5.2, 5.4, Phase 3
 // group 2): the turn-grouped transcript (provisional vs finalized styling,
 // speaker chips, the gap marker), the status row (elapsed, estimated cost,
-// actual usage, the connection-status indicator), the state-driven control
-// enablement, the error states (the shared taxonomy's full-screen state and
-// transient banner — the API key is never displayed), the shared idle
-// empty-transcript state, and the battery-restriction prompt. The controller
-// is a test double — never real services.
+// actual usage, the connection-status indicator, the audio-focus pause
+// wording), the state-driven control enablement, the error states (the
+// shared taxonomy's full-screen state and transient banner — the API key is
+// never displayed), the shared idle empty-transcript state, and the
+// battery-restriction prompt. The controller is a test double — never real
+// services.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -495,6 +496,33 @@ void main() {
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
       }
+    });
+  });
+
+  group('audio-focus pause (Phase 3 group 3)', () {
+    testWidgets('an audio-focus pause is worded distinctly from a user pause',
+        (tester) async {
+      // Another app took audio focus: the pause says so.
+      await pumpScreen(tester, const LiveSessionState(
+        phase: LiveSessionPhase.paused,
+        pausedByAudioFocus: true,
+      ));
+
+      expect(find.text('Paused — another app is using audio'), findsOneWidget);
+      expect(find.text('Paused'), findsNothing);
+      // The recording indicator still shows the paused state.
+      expect(find.byIcon(Icons.pause_circle_outline), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      // A user pause keeps the plain wording.
+      await pumpScreen(tester, const LiveSessionState(
+        phase: LiveSessionPhase.paused,
+      ));
+
+      expect(find.text('Paused'), findsOneWidget);
+      expect(find.text('Paused — another app is using audio'), findsNothing);
     });
   });
 

@@ -15,9 +15,9 @@
 
 ## 3. Audio focus (design P3-D2, live-transcription spec "Respect audio focus")
 
-- [ ] 3.1 Implement the audio-focus seam in `lib/session/`: an `AudioFocusGateway` interface (configure-for-record + a focus-change stream) with an `audio_session`-backed production implementation and a Riverpod provider; verify `flutter analyze` is clean and `flutter pub get` resolves.
-- [ ] 3.2 Wire focus changes into `LiveSessionController`: configure the session for recording at start; on focus loss send the existing pause command to the capture service, on focus gain send resume; expose a `pausedByAudioFocus` flag; verify with unit tests over a fake gateway (focus loss pauses and keeps the session open, focus gain resumes into the same transcript, no focus events means no commands, dispose releases the audio session).
-- [ ] 3.3 Surface the audio-focus pause in the live session screen's status row with wording distinct from a user pause; verify with a widget test.
+- [x] 3.1 Implement the audio-focus seam in `lib/session/`: an `AudioFocusGateway` interface (configure-for-record + a focus-change stream) with an `audio_session`-backed production implementation and a Riverpod provider; verify `flutter analyze` is clean and `flutter pub get` resolves.
+- [x] 3.2 Wire focus changes into `LiveSessionController`: configure the session for recording at start; on focus loss send the existing pause command to the capture service, on focus gain send resume; expose a `pausedByAudioFocus` flag; verify with unit tests over a fake gateway (focus loss pauses and keeps the session open, focus gain resumes into the same transcript, no focus events means no commands, dispose releases the audio session).
+- [x] 3.3 Surface the audio-focus pause in the live session screen's status row with wording distinct from a user pause; verify with a widget test.
 
 ## 4. Tests: coverage audit, gap fill, live-flow integration test (design P3-D4, test-coverage spec)
 
