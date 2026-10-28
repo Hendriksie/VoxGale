@@ -9,8 +9,12 @@ void main() {
   testWidgets('app shell renders with Mistral orange themes in both modes',
       (tester) async {
     for (final mode in [ThemeMode.light, ThemeMode.dark]) {
-      await tester
-          .pumpWidget(appWithStore(FakeApiKeyStore(), themeMode: mode));
+      // A saved key keeps the home screen in its idle state (with no key,
+      // the missing-key precondition state shows — empty-error-states spec).
+      await tester.pumpWidget(appWithStore(
+        FakeApiKeyStore()..key = 'test-key',
+        themeMode: mode,
+      ));
       await tester.pumpAndSettle();
 
       // Read the theme from below the MaterialApp (the MaterialApp element

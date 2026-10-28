@@ -602,6 +602,23 @@ void main() {
     });
   });
 
+  group('lifecycle (v1.1: battery re-check on resume)', () {
+    testWidgets('re-checks the battery exemption when the app resumes',
+        (tester) async {
+      final controller = FakeLiveSessionController();
+      await tester.pumpWidget(appWithStore(
+        FakeApiKeyStore(),
+        sessionController: controller,
+      ));
+      await tester.pump();
+
+      // The binding dispatches lifecycle changes to observers synchronously.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+
+      expect(controller.calls, contains('recheckBatteryExemption'));
+    });
+  });
+
   testWidgets('renders in both themes', (tester) async {
     for (final mode in [ThemeMode.light, ThemeMode.dark]) {
       await pumpScreen(

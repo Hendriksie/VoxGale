@@ -683,6 +683,28 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     await ref.read(captureServiceProvider).openBatteryOptimizationSettings();
   }
 
+  /// Re-checks the battery-optimization exemption (live-transcription
+  /// spec: the check runs at session start and while a session is active
+  /// — and is repeated when the app returns to the foreground, so the
+  /// prompt is dismissed once the user has granted the exemption; dogfood
+  /// friction 2026-10-28). Never raises the prompt without a session
+  /// context: with no capture in flight and the prompt not showing, the
+  /// platform is not queried.
+  Future<void> recheckBatteryExemption() async {
+    if (!_captureInFlight && !state.batteryPromptNeeded) {
+      return;
+    }
+    final ignored =
+        await ref.read(captureServiceProvider).isBatteryOptimizationIgnored();
+    if (!ref.mounted) {
+      return;
+    }
+    final needed = !ignored;
+    if (state.batteryPromptNeeded != needed) {
+      state = state.copyWith(batteryPromptNeeded: needed);
+    }
+  }
+
   /// Re-requests the RECORD_AUDIO runtime permission — the remedy action of
   /// the mic-permission-denied state (Phase 3 group 2). Returns whether the
   /// permission is now granted; the gateway prompts natively.

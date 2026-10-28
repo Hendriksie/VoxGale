@@ -550,6 +550,45 @@ void main() {
     });
   });
 
+  group('battery exemption re-check (v1.1: dogfood friction — stale banner)',
+      () {
+    test('dismisses the prompt once the app is exempt', () async {
+      stubServiceStart(batteryIgnored: false);
+      stubSaveSession();
+      await controller().start();
+      expect(state().batteryPromptNeeded, isTrue);
+
+      when(() => captureService.isBatteryOptimizationIgnored())
+          .thenAnswer((_) async => true);
+
+      await controller().recheckBatteryExemption();
+
+      expect(state().batteryPromptNeeded, isFalse);
+    });
+
+    test('keeps the prompt while the app is not exempt (session context)',
+        () async {
+      stubServiceStart(batteryIgnored: false);
+      stubSaveSession();
+      await controller().start();
+      expect(state().batteryPromptNeeded, isTrue);
+
+      await controller().recheckBatteryExemption();
+
+      expect(state().batteryPromptNeeded, isTrue);
+    });
+
+    test('does not query the platform without a session context', () async {
+      controller();
+      await waitFor(() => state().phase == LiveSessionPhase.idle);
+
+      await controller().recheckBatteryExemption();
+
+      verifyNever(() => captureService.isBatteryOptimizationIgnored());
+      expect(state().batteryPromptNeeded, isFalse);
+    });
+  });
+
   group('turn grouping (4.1)', () {
     test('groups text deltas into turns and closes blocks on turn '
         'boundaries (turn-detection mode)', () async {

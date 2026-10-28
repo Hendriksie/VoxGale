@@ -43,7 +43,7 @@ class FakeLiveSessionController extends LiveSessionController {
 
   /// The action calls, in order ('start', 'pause', 'resume', 'stop',
   /// 'runDiarizationPass', 'skipDiarizationPass', 'openBatterySettings',
-  /// 'requestMicPermission').
+  /// 'requestMicPermission', 'recheckBatteryExemption').
   final List<String> calls = [];
 
   @override
@@ -93,6 +93,11 @@ class FakeLiveSessionController extends LiveSessionController {
   Future<bool> requestMicPermission() async {
     calls.add('requestMicPermission');
     return true;
+  }
+
+  @override
+  Future<void> recheckBatteryExemption() async {
+    calls.add('recheckBatteryExemption');
   }
 }
 

@@ -8,6 +8,8 @@
 // provisional-vs-finalized styling and visible gap markers
 // (transcript_widgets.dart).
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,11 +26,45 @@ import 'transcript_widgets.dart';
 /// The live session screen: the app's home (design P1-D6). The Phase-0 spike
 /// harness and its debug-only route were removed in Phase 4 — the app bar
 /// carries only the production actions (file transcription, history, settings).
-class LiveSessionScreen extends ConsumerWidget {
+/// A [WidgetsBindingObserver] re-checks the battery exemption when the app
+/// returns to the foreground, so the battery prompt dismisses once the user
+/// has granted it (live-transcription spec; dogfood friction 2026-10-28).
+class LiveSessionScreen extends ConsumerStatefulWidget {
   const LiveSessionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LiveSessionScreen> createState() => _LiveSessionScreenState();
+}
+
+class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // The battery exemption may have changed in the system settings
+      // while the app was backgrounded.
+      unawaited(
+        ref
+            .read(liveSessionControllerProvider.notifier)
+            .recheckBatteryExemption(),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(liveSessionControllerProvider);
     final controller = ref.read(liveSessionControllerProvider.notifier);
     return Scaffold(

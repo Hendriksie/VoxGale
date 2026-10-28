@@ -13,9 +13,9 @@
 
 ## 3. Battery prompt re-check on foreground resume (design V11-D3)
 
-- [ ] 3.1 Add `LiveSessionController.recheckBatteryExemption()`: early-return when no capture is in flight and the prompt flag is unset; otherwise re-read `captureService.isBatteryOptimizationIgnored()` and set `batteryPromptNeeded = !ignored` (dismisses once exempt; keeps/sets within a session context). Verify `flutter analyze` is clean.
-- [ ] 3.2 Convert `LiveSessionScreen` to a `ConsumerStatefulWidget` with a `WidgetsBindingObserver`: on `AppLifecycleState.resumed`, call `controller.recheckBatteryExemption()`; remove the observer on dispose. Verify `flutter analyze` is clean.
-- [ ] 3.3 Tests: a controller test for `recheckBatteryExemption` over a fake capture service (exempt → flag clears; not exempt with the flag set or a session in flight → flag set/stays; no session context → no platform call, flag untouched); a widget test that the screen calls recheck when the lifecycle resumes (fake controller records the call). Verify `flutter test test/session/live_session_controller_test.dart test/app/live_session_screen_test.dart` passes.
+- [x] 3.1 Add `LiveSessionController.recheckBatteryExemption()`: early-return when no capture is in flight and the prompt flag is unset; otherwise re-read `captureService.isBatteryOptimizationIgnored()` and set `batteryPromptNeeded = !ignored` (dismisses once exempt; keeps/sets within a session context). Verify `flutter analyze` is clean. (Verified: analyze — no issues.)
+- [x] 3.2 Convert `LiveSessionScreen` to a `ConsumerStatefulWidget` with a `WidgetsBindingObserver`: on `AppLifecycleState.resumed`, call `controller.recheckBatteryExemption()`; remove the observer on dispose. Verify `flutter analyze` is clean. (Verified: analyze — no issues.)
+- [x] 3.3 Tests: a controller test for `recheckBatteryExemption` over a fake capture service (exempt → flag clears; not exempt with the flag set or a session in flight → flag set/stays; no session context → no platform call, flag untouched); a widget test that the screen calls recheck on lifecycle resume (fake controller records the call). Verify `flutter test test/session/live_session_controller_test.dart test/app/live_session_screen_test.dart` passes. (Verified: full suite 353/353 passes — 9 new tests; also fixed test/widget_test.dart to seed a key, since the app-shell test renders the real controller and the new no-key behavior shows the missing-key state.)
 
 ## 4. Device smoke + integration checks
 
