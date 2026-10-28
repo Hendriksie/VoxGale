@@ -1,0 +1,31 @@
+# Dependabot version updates for VoxGale.
+#
+# Two ecosystems:
+#   - pub: the Dart/Flutter dependencies in pubspec.yaml (pub.dev is the
+#     default registry — no registries block needed).
+#   - github-actions: the action versions in .github/workflows/*.yml
+#     (checkout@v6, setup-java@v5 — major tags that drift over time).
+#
+# Dependabot security ALERTS (vulnerability notifications) are not
+# configured here — they are a repository setting (Settings → Security &
+# analysis → "Dependabot alerts"), enabled once in the GitHub UI.
+# Optionally also enable "Dependabot security updates" there to get
+# automatic fix PRs.
+#
+# Weekly keeps the PR volume low for a solo project; every PR still has to
+# pass CI (flutter analyze + flutter test) before merge.
+
+version: 2
+
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
