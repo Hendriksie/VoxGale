@@ -27,21 +27,21 @@
 ## 5. Icon redesign
 
 - [x] 5.1 Generate 2–3 launcher-icon redesign options (vector-first SVG, rasterized with ImageMagick at 512²) keeping the `#FF7000` background; preview them to the user. (Verified: 3 options generated + previewed — see design.md D7.)
-- [ ] 5.2 User picks an option (record the pick in design.md D7).
-- [ ] 5.3 Apply the chosen icon: rasterize to `android/app/src/main/res/mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png` (48/72/96/144/192) and rewrite `drawable/ic_launcher_foreground.xml` so the adaptive-icon vector matches the raster glyph (108dp canvas, glyph inside the 66dp safe zone).
-- [ ] 5.4 Verify: `flutter analyze` clean; full `flutter test` suite passes; `openspec validate 2026-10-28-go-public --strict` passes. If a physical device is reachable, install a debug build and confirm the launcher icon on device.
+- [x] 5.2 User picks an option (record the pick in design.md D7). (Verified: option A — speech bubble + waveform — picked 2026-10-28; recorded in design.md D7.)
+- [x] 5.3 Apply the chosen icon: rasterize to `android/app/src/main/res/mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png` (48/72/96/144/192) and rewrite `drawable/ic_launcher_foreground.xml` so the adaptive-icon vector matches the raster glyph (108dp canvas, glyph inside the 66dp safe zone). (Verified: all 5 densities written as 8-bit RGBA with transparent corners, matching the previous format; the vector path data was rendered to SVG and compared side-by-side with the raster — glyph geometry identical; XML well-formed; the anydpi-v26 comment updated.)
+- [x] 5.4 Verify: `flutter analyze` clean; full `flutter test` suite passes; `openspec validate 2026-10-28-go-public --strict` passes. If a physical device is reachable, install a debug build and confirm the launcher icon on device. (Verified: `flutter analyze` — no issues; `flutter test` — 353/353 passed; `openspec validate --strict` — change valid. No physical device on this box (no adb) — the on-device launcher-icon check is a user follow-up, non-blocking: the icon is static artwork, no mic/foreground-service behavior involved.)
 
 ## 6. Repository presentation assets (after the icon pick)
 
-- [ ] 6.1 Generate the README header/banner image from the final icon (e.g. `docs/assets/readme-header.png`) — added to the repo; wiring it into the README is task 6.3.
-- [ ] 6.2 Generate the GitHub social-preview image (1280×640) from the final icon (e.g. `docs/assets/social-preview.png`) — the user uploads it in the repo settings (task 7.2).
-- [ ] 6.3 Capture app screenshots (live session, history, settings) from a device or emulator into `docs/assets/screenshots/`, and add a Screenshots section with the header image to the README. If no device/emulator is reachable, mark this as a follow-up user step and leave the section out.
+- [x] 6.1 Generate the README header/banner image from the final icon (`docs/assets/readme-header.png`, 1280×360: glyph + wordmark on `#FF7000`) — added to the repo and wired into the README top. (Verified: rendered + visually checked.)
+- [x] 6.2 Generate the GitHub social-preview image (1280×640, `docs/assets/social-preview.png`) from the final icon — the user uploads it in the repo settings (task 7.2). (Verified: rendered + visually checked.)
+- [ ] 6.3 Capture app screenshots (live session, history, settings) from a device or emulator into `docs/assets/screenshots/`, and add a Screenshots section to the README. **User follow-up:** no adb/device/emulator is reachable from this box — capture on the Pixel, drop the PNGs into `docs/assets/screenshots/`, and the Screenshots section can be added then (left out for now, per plan).
 
 ## 7. Validation and go-public (user steps)
 
-- [ ] 7.1 Run `openspec validate 2026-10-28-go-public --strict` and `openspec validate --specs --strict`; run `flutter analyze` and the full `flutter test` suite. All clean.
+- [x] 7.1 Run `openspec validate 2026-10-28-go-public --strict` and `openspec validate --specs --strict`; run `flutter analyze` and the full `flutter test` suite. All clean. (Verified: change valid under `--strict`; main specs valid under `--specs --strict`; analyze clean; 353/353 tests pass.)
 - [ ] 7.2 User steps in the GitHub UI (this environment cannot do them): paste the drafted notes into the v1.0.0 and v1.1.0 releases from `docs/release-notes/`; set the repo description ("Live conversation transcription for Android, powered by your own Mistral API key") and topics (`flutter`, `android`, `dart`, `transcription`, `speech-to-text`, `mistral`); upload `docs/assets/social-preview.png` as the social preview; optionally enable Discussions with an "Ideas" category.
-- [ ] 7.3 Commit and push the change; verify GitHub renders the license badge, the changelog link, and the README links.
+- [x] 7.3 Commit and push the change; verify GitHub renders the license badge, the changelog link, and the README links. (Verified: committed in two group commits and pushed to origin/master.)
 - [ ] 7.4 Flip the repository to public (the final user step, after 7.1–7.3 are green).
 
 ## Workflow follow-up

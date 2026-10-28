@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive-icon foreground (API 26+): the white waveform glyph on the
-     108dp adaptive-icon canvas. The geometry is identical, in relative
-     proportions, to the legacy mipmap-*/ic_launcher.png glyphs: five
-     vertical capsule bars, short-tall-tallest-tall-short (bar width 7.5%
-     of the canvas, gaps 5.5%, tallest bar 46.9% of the height), centered
-     on both axes inside the 66dp safe zone — the outer 21dp ring is the
-     mask-crop zone. The Mistral-orange background comes from the
-     <background> layer (@color/ic_launcher_background), so this drawable
-     is white-only. -->
+<!-- Adaptive-icon foreground (API 26+): the white speech-bubble glyph on the
+     108dp adaptive-icon canvas. The glyph is a rounded speech bubble with a
+     bottom-left tail; the four waveform bars inside it are cut out of the
+     bubble (fillType="evenOdd"), so the orange <background> layer
+     (@color/ic_launcher_background) shows through as the bars — identical
+     to the legacy mipmap-*/ic_launcher.png raster, which paints the bars in
+     the same orange. Geometry (108dp canvas, glyph inside the 66dp safe
+     zone, i.e. within 21..87 on both axes):
+       - bubble: rounded rect x=22 y=28 w=64 h=38, corner radius 9
+       - tail:   triangle (34,64) (30,80) (48,64), merging into the
+                 bubble's bottom edge
+       - bars:   four capsules, width 5.5 (radius 2.75), at x=37/46.5/56/
+                 65.5, heights 10/18/24/14, centred on the bubble's midline
+                 y=47
+     The orange background comes from the <background> layer, so this
+     drawable is white-only. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -15,39 +22,41 @@
     android:viewportHeight="108">
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M 25.946,40.078
-            A 4.061,4.061 0 0 1 30.007,44.139
-            L 30.007,63.861
-            A 4.061,4.061 0 0 1 25.946,67.922
-            A 4.061,4.061 0 0 1 21.885,63.861
-            L 21.885,44.139
-            A 4.061,4.061 0 0 1 25.946,40.078 Z
-            M 39.973,32.484
-            A 4.061,4.061 0 0 1 44.034,36.545
-            L 44.034,71.455
-            A 4.061,4.061 0 0 1 39.973,75.516
-            A 4.061,4.061 0 0 1 35.912,71.455
-            L 35.912,36.545
-            A 4.061,4.061 0 0 1 39.973,32.484 Z
-            M 54,28.688
-            A 4.061,4.061 0 0 1 58.061,32.749
-            L 58.061,75.252
-            A 4.061,4.061 0 0 1 54,79.313
-            A 4.061,4.061 0 0 1 49.939,75.252
-            L 49.939,32.749
-            A 4.061,4.061 0 0 1 54,28.688 Z
-            M 68.027,32.484
-            A 4.061,4.061 0 0 1 72.088,36.545
-            L 72.088,71.455
-            A 4.061,4.061 0 0 1 68.027,75.516
-            A 4.061,4.061 0 0 1 63.966,71.455
-            L 63.966,36.545
-            A 4.061,4.061 0 0 1 68.027,32.484 Z
-            M 82.055,40.078
-            A 4.061,4.061 0 0 1 86.116,44.139
-            L 86.116,63.861
-            A 4.061,4.061 0 0 1 82.055,67.922
-            A 4.061,4.061 0 0 1 77.994,63.861
-            L 77.994,44.139
-            A 4.061,4.061 0 0 1 82.055,40.078 Z" />
+        android:fillType="evenOdd"
+        android:pathData="M 31,28
+            L 77,28
+            A 9,9 0 0 1 86,37
+            L 86,57
+            A 9,9 0 0 1 77,66
+            L 31,66
+            A 9,9 0 0 1 22,57
+            L 22,37
+            A 9,9 0 0 1 31,28
+            Z
+            M 37,44.75
+            A 2.75,2.75 0 0 1 42.5,44.75
+            L 42.5,49.25
+            A 2.75,2.75 0 0 1 37,49.25
+            Z
+            M 46.5,40.75
+            A 2.75,2.75 0 0 1 52,40.75
+            L 52,53.25
+            A 2.75,2.75 0 0 1 46.5,53.25
+            Z
+            M 56,37.75
+            A 2.75,2.75 0 0 1 61.5,37.75
+            L 61.5,56.25
+            A 2.75,2.75 0 0 1 56,56.25
+            Z
+            M 65.5,42.75
+            A 2.75,2.75 0 0 1 71,42.75
+            L 71,51.25
+            A 2.75,2.75 0 0 1 65.5,51.25
+            Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 34,64
+            L 30,80
+            L 48,64
+            Z" />
 </vector>

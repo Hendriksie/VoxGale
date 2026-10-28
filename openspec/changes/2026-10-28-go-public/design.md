@@ -84,7 +84,13 @@ the pick, the same geometry is rasterized to the five mipmap densities and
 expressed as the adaptive-icon foreground vector (108dp canvas, glyph inside
 the 66dp safe zone), keeping the raster and vector forms consistent. The
 orange `#FF7000` background stays — it is the brand anchor; the redesign
-changes the glyph.
+changes the glyph. **Pick (2026-10-28): option A — the white speech bubble
+with the bottom-left tail and four orange waveform bars cut out of it.**
+In the adaptive-icon foreground the bars are `evenOdd` holes in the white
+bubble, so the orange background layer shows through as the bars —
+identical to the raster, which paints them in the same orange. The README
+header banner and the 1280×640 social preview are composites of the glyph
+plus a DejaVu Sans Bold "VoxGale" wordmark on `#FF7000`.
 
 **D8 — Repo presentation assets derive from the final icon.** README header
 and the 1280×640 social preview are generated from the chosen icon after

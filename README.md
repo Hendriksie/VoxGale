@@ -1,5 +1,9 @@
 # VoxGale
 
+<p align="center">
+  <img src="docs/assets/readme-header.png" alt="VoxGale" width="640">
+</p>
+
 Live conversation transcription for Android, powered by your own
 [Mistral AI](https://mistral.ai) API key. Record a conversation — including
 while the app is backgrounded or the screen is off — and read it as clean,
