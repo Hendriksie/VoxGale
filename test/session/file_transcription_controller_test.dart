@@ -220,6 +220,23 @@ void main() {
 
       expect(state().missingApiKey, isTrue);
     });
+
+    test('tracks key presence changes both ways without a restart '
+        '(dogfood friction: stale banner)', () async {
+      controller();
+      await waitFor(() => !state().missingApiKey);
+
+      // Removed → the banner flag shows (the settings controller
+      // invalidates apiKeyProvider; the presence provider re-computes).
+      await apiKeyStore.deleteKey();
+      container.invalidate(apiKeyProvider);
+      await waitFor(() => state().missingApiKey);
+
+      // Saved again → the banner flag hides.
+      await apiKeyStore.saveKey('test-key');
+      container.invalidate(apiKeyProvider);
+      await waitFor(() => !state().missingApiKey);
+    });
   });
 
   group('pick (file-transcription spec: import an audio file)', () {

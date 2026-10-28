@@ -8,8 +8,8 @@
 
 ## 2. Reactive API-key presence: file transcription controller (design V11-D1)
 
-- [ ] 2.1 In `FileTranscriptionController.build()`: replace the one-shot `_loadKeyPresence()` with the same `ref.listen(apiKeyPresentProvider, …)` listener updating `missingApiKey` (the idle view's inline banner then tracks presence: shows when the key is removed, hides when saved). The `pick()`-time key check stays. Verify `flutter analyze` is clean.
-- [ ] 2.2 Controller tests: the banner flag tracks presence both ways (save → hides; remove → shows), mutation-then-read over the fake store. Verify `flutter test test/session/file_transcription_controller_test.dart` passes.
+- [x] 2.1 In `FileTranscriptionController.build()`: replace the one-shot `_loadKeyPresence()` with the same `ref.listen(apiKeyPresentProvider, …)` listener updating `missingApiKey` (the idle view's inline banner then tracks presence: shows when the key is removed, hides when saved). The `pick()`-time key check stays. Verify `flutter analyze` is clean. (Verified: analyze — no issues.)
+- [x] 2.2 Controller tests: the banner flag tracks presence both ways (save → hides; remove → shows), mutation-then-read over the fake store. Verify `flutter test test/session/file_transcription_controller_test.dart` passes. (Verified: 17/17 tests in the file pass, including the new tracking test.)
 
 ## 3. Battery prompt re-check on foreground resume (design V11-D3)
 

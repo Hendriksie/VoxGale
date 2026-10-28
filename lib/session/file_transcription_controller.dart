@@ -286,21 +286,21 @@ class FileTranscriptionController extends Notifier<FileTranscriptionState> {
       _tickSub?.cancel();
     });
     // The key's presence only — the key itself is read inside the
-    // lib/mistral/ clients, never here.
-    unawaited(_loadKeyPresence());
+    // lib/mistral/ clients, never here. Tracked reactively so the idle
+    // banner follows key changes without a restart (empty-error-states
+    // spec; dogfood friction 2026-10-28).
+    ref.listen(apiKeyPresentProvider, (previous, next) {
+      next.whenData((present) {
+        if (ref.mounted) {
+          state = state.copyWith(missingApiKey: !present);
+        }
+      });
+    });
     return const FileTranscriptionState();
   }
 
   StreamSubscription<int>? _tickSub;
   Uint8List? _audioBytes;
-
-  Future<void> _loadKeyPresence() async {
-    final key = await ref.read(apiKeyStoreProvider).readKey();
-    if (!ref.mounted) {
-      return;
-    }
-    state = state.copyWith(missingApiKey: key == null || key.isEmpty);
-  }
 
   // -- Public API (the app layer's actions) --------------------------------
 
