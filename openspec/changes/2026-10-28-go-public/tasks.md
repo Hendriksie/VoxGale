@@ -35,14 +35,18 @@
 
 - [x] 6.1 Generate the README header/banner image from the final icon (`docs/assets/readme-header.png`, 1280×360: glyph + wordmark on `#FF7000`) — added to the repo and wired into the README top. (Verified: rendered + visually checked.)
 - [x] 6.2 Generate the GitHub social-preview image (1280×640, `docs/assets/social-preview.png`) from the final icon — the user uploads it in the repo settings (task 7.2). (Verified: rendered + visually checked.)
-- [ ] 6.3 Capture app screenshots (live session, history, settings) from a device or emulator into `docs/assets/screenshots/`, and add a Screenshots section to the README. **User follow-up:** no adb/device/emulator is reachable from this box — capture on the Pixel, drop the PNGs into `docs/assets/screenshots/`, and the Screenshots section can be added then (left out for now, per plan).
+- [x] 6.3 Capture app screenshots (live session, history, settings) from a device or emulator into `docs/assets/screenshots/`, and add a Screenshots section to the README. (Verified: the user captured three screenshots on the Pixel and added them; renamed to `live-session.png`, `file-transcription.png`, `history.png`; a Screenshots section with the three images was added to the README between Features and Install.)
+
+## 8. Post-review fixes (user-reported)
+
+- [x] 8.1 Fix `SECURITY.md`: the private-vulnerability-reporting link 404s while the repository is private (the feature exists only on public repositories). Reworded to name the advisories route as the preferred path once public, with a GitHub noreply email fallback that works in both states. (Verified: the 404 reproduced via an unauthenticated fetch; the reworded file names both routes.)
 
 ## 7. Validation and go-public (user steps)
 
 - [x] 7.1 Run `openspec validate 2026-10-28-go-public --strict` and `openspec validate --specs --strict`; run `flutter analyze` and the full `flutter test` suite. All clean. (Verified: change valid under `--strict`; main specs valid under `--specs --strict`; analyze clean; 353/353 tests pass.)
-- [ ] 7.2 User steps in the GitHub UI (this environment cannot do them): paste the drafted notes into the v1.0.0 and v1.1.0 releases from `docs/release-notes/`; set the repo description ("Live conversation transcription for Android, powered by your own Mistral API key") and topics (`flutter`, `android`, `dart`, `transcription`, `speech-to-text`, `mistral`); upload `docs/assets/social-preview.png` as the social preview; optionally enable Discussions with an "Ideas" category.
-- [x] 7.3 Commit and push the change; verify GitHub renders the license badge, the changelog link, and the README links. (Verified: committed in two group commits and pushed to origin/master.)
-- [ ] 7.4 Flip the repository to public (the final user step, after 7.1–7.3 are green).
+- [ ] 7.2 User steps in the GitHub UI (this environment cannot do them): paste the drafted notes into the v1.0.0 and v1.1.0 releases from `docs/release-notes/`; set the repo description ("Live conversation transcription for Android, powered by your own Mistral API key") and topics (`flutter`, `android`, `dart`, `transcription`, `speech-to-text`, `mistral`); upload `docs/assets/social-preview.png` as the social preview; optionally enable Discussions with an "Ideas" category. (Partially done by the user 2026-10-28: release notes pasted, description/topics set.)
+- [x] 7.3 Commit and push the change; verify GitHub renders the license badge, the changelog link, and the README links. (Verified: committed in group commits and pushed to origin/master.)
+- [ ] 7.4 Flip the repository to public (the final user step, after 7.1–7.3 are green). (User: "gonna do that soon". After flipping: verify the SECURITY.md advisories link resolves and GitHub detects the MIT license.)
 
 ## Workflow follow-up
 

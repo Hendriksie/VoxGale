@@ -3,9 +3,15 @@
 ## Reporting a vulnerability
 
 VoxGale records audio from your microphone and handles your Mistral API
-key. If you find a security issue, please report it privately via
-[GitHub's private vulnerability reporting](https://github.com/Hendriksie/VoxGale/security/advisories/new)
-— do not open a public issue.
+key. If you find a security issue, please report it privately — do not
+open a public issue.
+
+- **Preferred:** [GitHub private vulnerability reporting](https://github.com/Hendriksie/VoxGale/security/advisories/new)
+  (on the repository page: Security tab → "Report a vulnerability").
+  This route is available on the public repository.
+- **Fallback:** email `6705457+Hendriksie@users.noreply.github.com` —
+  GitHub's noreply address for the maintainer; it forwards without
+  exposing a personal email address.
 
 ## Scope
 

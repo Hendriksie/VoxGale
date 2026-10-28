@@ -33,6 +33,14 @@ accounts, no cloud sync, and no telemetry — see [PRIVACY.md](PRIVACY.md).
   Mistral directly, per minute of audio; see
   [Mistral's pricing](https://mistral.ai/pricing).
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/assets/screenshots/live-session.png" width="270" alt="Live session: speaker-labelled transcript with elapsed time and billed cost">
+  <img src="docs/assets/screenshots/file-transcription.png" width="270" alt="File transcription: import an audio file">
+  <img src="docs/assets/screenshots/history.png" width="270" alt="Transcript history with search, durations, and billed cost">
+</p>
+
 ## Install
 
 1. Download `voxgale-<version>.apk` from the
