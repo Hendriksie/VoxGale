@@ -17,15 +17,12 @@ Each entry:
 
 ## Entries
 
-<!-- Newest first. Add one entry per friction, e.g.:
+### 2026-10-28 — API-key flaky message
 
-### 2026-10-28 — <short title>
-
-- **What happened:** …
-- **What you expected:** …
-- **Severity:** annoying | work impeded | data lost
-
--->
+- **Date** — 2026-10-28
+- **What happened** — After adding an API-key, the red message stays visible until I restart the app. Removing the API-key does not show the red message anymore.
+- **What you expected** — After updating the API-key, the red message should go away (if its set) or show again (when its removed).
+- **Severity** — `annoying`
 
 ## Weekly notes
 
