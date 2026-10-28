@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/app/live_session_screen.dart';
-import 'package:voxtral_live/app/theme.dart';
+import 'package:voxgale/app/live_session_screen.dart';
+import 'package:voxgale/app/theme.dart';
 
 import 'app/fakes.dart';
 
@@ -26,7 +26,7 @@ void main() {
       expect(theme.brightness, expectedScheme.brightness);
       expect(theme.colorScheme.primary, expectedScheme.primary);
       // Home is the live session screen (design P1-D6).
-      expect(find.text('Voxtral Live'), findsOneWidget);
+      expect(find.text('VoxGale'), findsOneWidget);
       expect(find.text('Start a session to see the live transcript.'),
           findsOneWidget);
       expect(find.text('Start'), findsOneWidget);

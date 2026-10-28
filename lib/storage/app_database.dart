@@ -105,7 +105,7 @@ class Preferences extends Table {
 class AppDatabase extends _$AppDatabase {
   /// Opens (creating if needed) the database file in the app's documents
   /// directory, via drift_flutter's platform glue.
-  AppDatabase() : super(driftDatabase(name: 'voxtral_live'));
+  AppDatabase() : super(driftDatabase(name: 'voxgale'));
 
   /// Creates an in-memory database that persists nothing — for tests.
   AppDatabase.memory() : super(NativeDatabase.memory());

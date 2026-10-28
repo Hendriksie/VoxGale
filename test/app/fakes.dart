@@ -6,13 +6,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:voxtral_live/main.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/file_transcription_controller.dart';
-import 'package:voxtral_live/session/history_detail_controller.dart';
-import 'package:voxtral_live/session/live_session_controller.dart';
-import 'package:voxtral_live/session/session_providers.dart';
-import 'package:voxtral_live/storage/storage.dart';
+import 'package:voxgale/main.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/file_transcription_controller.dart';
+import 'package:voxgale/session/history_detail_controller.dart';
+import 'package:voxgale/session/live_session_controller.dart';
+import 'package:voxgale/session/session_providers.dart';
+import 'package:voxgale/storage/storage.dart';
 
 /// In-memory [ApiKeyStore] for widget tests.
 class FakeApiKeyStore implements ApiKeyStore {

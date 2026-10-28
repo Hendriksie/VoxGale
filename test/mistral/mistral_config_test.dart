@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/mistral/mistral_config.dart';
+import 'package:voxgale/mistral/mistral_config.dart';
 
 void main() {
   test('exposes the pinned Voxtral 3 model IDs and per-minute rates', () {

@@ -10,11 +10,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/app/error_states.dart';
-import 'package:voxtral_live/app/live_session_screen.dart';
-import 'package:voxtral_live/app/transcript_widgets.dart';
-import 'package:voxtral_live/session/live_session_controller.dart';
-import 'package:voxtral_live/session/session_models.dart';
+import 'package:voxgale/app/error_states.dart';
+import 'package:voxgale/app/live_session_screen.dart';
+import 'package:voxgale/app/transcript_widgets.dart';
+import 'package:voxgale/session/live_session_controller.dart';
+import 'package:voxgale/session/session_models.dart';
 
 import 'fakes.dart';
 
@@ -612,7 +612,7 @@ void main() {
         themeMode: mode,
       );
 
-      expect(find.text('Voxtral Live'), findsOneWidget);
+      expect(find.text('VoxGale'), findsOneWidget);
       expect(find.text('Hello'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();

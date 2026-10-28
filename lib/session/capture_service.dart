@@ -173,7 +173,7 @@ class CaptureService {
   }
 
   /// Notification title: the app name (spec: persistent notification).
-  static const String notificationTitle = 'Voxtral Live';
+  static const String notificationTitle = 'VoxGale';
 
   /// How long [stop] waits for the graceful stop before force-stopping the
   /// service (the spike's fallback for a stuck graceful path).

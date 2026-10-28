@@ -13,7 +13,7 @@ void main() {
 
   FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
-      channelId: 'voxtral_live_capture',
+      channelId: 'voxgale_capture',
       channelName: 'Live transcription',
       channelDescription: 'Shown while a live transcription session is active',
     ),
@@ -39,7 +39,7 @@ class VoxtralLiveApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Voxtral Live',
+      title: 'VoxGale',
       theme: buildLightTheme(),
       darkTheme: buildDarkTheme(),
       themeMode: themeMode ?? ThemeMode.system,

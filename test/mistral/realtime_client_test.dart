@@ -34,11 +34,11 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/mistral/mistral_api_exception.dart';
-import 'package:voxtral_live/mistral/mistral_config.dart';
-import 'package:voxtral_live/mistral/realtime/realtime_events.dart';
-import 'package:voxtral_live/mistral/realtime/realtime_session_config.dart';
-import 'package:voxtral_live/mistral/realtime/web_socket_realtime_client.dart';
+import 'package:voxgale/mistral/mistral_api_exception.dart';
+import 'package:voxgale/mistral/mistral_config.dart';
+import 'package:voxgale/mistral/realtime/realtime_events.dart';
+import 'package:voxgale/mistral/realtime/realtime_session_config.dart';
+import 'package:voxgale/mistral/realtime/web_socket_realtime_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class MockWebSocketChannel extends Mock implements WebSocketChannel {}

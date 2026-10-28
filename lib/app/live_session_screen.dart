@@ -33,7 +33,7 @@ class LiveSessionScreen extends ConsumerWidget {
     final controller = ref.read(liveSessionControllerProvider.notifier);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Voxtral Live'),
+        title: const Text('VoxGale'),
         leading: Padding(
           padding: const EdgeInsets.only(left: 16),
           child: Center(

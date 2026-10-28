@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/session/file_transcription_controller.dart';
+import 'package:voxgale/session/file_transcription_controller.dart';
 
 void main() {
   // The production [JustAudioDurationProber] reads a file's duration through

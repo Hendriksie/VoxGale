@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/storage/storage.dart';
+import 'package:voxgale/storage/storage.dart';
 
 void main() {
   late AppDatabase db;

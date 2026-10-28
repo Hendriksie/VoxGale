@@ -20,14 +20,14 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/audio_focus_gateway.dart';
-import 'package:voxtral_live/session/capture_service.dart';
-import 'package:voxtral_live/session/live_session_controller.dart';
-import 'package:voxtral_live/session/session_models.dart';
-import 'package:voxtral_live/session/session_providers.dart';
-import 'package:voxtral_live/session/wav_file_writer.dart';
-import 'package:voxtral_live/storage/storage.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/audio_focus_gateway.dart';
+import 'package:voxgale/session/capture_service.dart';
+import 'package:voxgale/session/live_session_controller.dart';
+import 'package:voxgale/session/session_models.dart';
+import 'package:voxgale/session/session_providers.dart';
+import 'package:voxgale/session/wav_file_writer.dart';
+import 'package:voxgale/storage/storage.dart';
 
 class MockBatchTranscriptionClient extends Mock
     implements BatchTranscriptionClient {}
@@ -257,7 +257,7 @@ void main() {
   }
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('voxtral_live_flow_test');
+    tempDir = await Directory.systemTemp.createTemp('voxgale_flow_test');
     clock = FakeSessionClock();
     audioFocus = FakeAudioFocusGateway();
     apiKeyStore = FakeApiKeyStore()..key = 'test-key';

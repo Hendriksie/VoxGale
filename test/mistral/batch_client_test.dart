@@ -42,10 +42,10 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/app/error_states.dart';
-import 'package:voxtral_live/mistral/batch/batch_transcription_client.dart';
-import 'package:voxtral_live/mistral/batch/dio_batch_transcription_client.dart';
-import 'package:voxtral_live/mistral/mistral_api_exception.dart';
+import 'package:voxgale/app/error_states.dart';
+import 'package:voxgale/mistral/batch/batch_transcription_client.dart';
+import 'package:voxgale/mistral/batch/dio_batch_transcription_client.dart';
+import 'package:voxgale/mistral/mistral_api_exception.dart';
 
 class MockDio extends Mock implements Dio {}
 

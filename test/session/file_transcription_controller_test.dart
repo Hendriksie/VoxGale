@@ -4,11 +4,11 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/file_transcription_controller.dart';
-import 'package:voxtral_live/session/live_session_controller.dart';
-import 'package:voxtral_live/session/session_providers.dart';
-import 'package:voxtral_live/storage/storage.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/file_transcription_controller.dart';
+import 'package:voxgale/session/live_session_controller.dart';
+import 'package:voxgale/session/session_providers.dart';
+import 'package:voxgale/storage/storage.dart';
 
 class MockSessionRepository extends Mock implements SessionRepository {}
 

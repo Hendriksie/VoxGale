@@ -1,4 +1,4 @@
-# Voxtral Live
+# VoxGale
 
 Live conversation transcription for Android, powered by your own
 [Mistral AI](https://mistral.ai) API key. Record a conversation — including
@@ -31,7 +31,7 @@ accounts, no cloud sync, and no telemetry — see [PRIVACY.md](PRIVACY.md).
 
 ## Install
 
-1. Download `voxtral-live-<version>.apk` from the
+1. Download `voxgale-<version>.apk` from the
    [Releases](https://github.com/Hendriksie/opencode-openspec-test/releases)
    page.
 2. Open the downloaded file and allow "install unknown apps" for the app you
@@ -72,7 +72,7 @@ Notes:
   ```sh
   keytool -genkeypair -v -keystore android/app/upload-keystore.jks \
     -alias upload -keyalg RSA -keysize 2048 -validity 10950 \
-    -dname "CN=Voxtral Live, O=Hendriksie, C=NL"
+    -dname "CN=VoxGale, O=Hendriksie, C=NL"
   ```
 
   then write `android/key.properties` (gitignored) with the passwords you
@@ -95,7 +95,7 @@ Notes:
 Pushing a tag matching `v*` (for example `v1.0.0`) runs
 [`.github/workflows/release.yml`](.github/workflows/release.yml): it runs
 `flutter analyze` and `flutter test`, builds the release APK, and publishes
-a GitHub Release with the APK attached as `voxtral-live-<tag>.apk`.
+a GitHub Release with the APK attached as `voxgale-<tag>.apk`.
 
 ### Repository secrets (one-time setup)
 
@@ -120,8 +120,8 @@ The workflow signs the APK with the release key from two repository secrets
 
 ```sh
 flutter build apk --release
-cp build/app/outputs/flutter-apk/app-release.apk voxtral-live-v1.0.0.apk
-gh release create v1.0.0 voxtral-live-v1.0.0.apk --title v1.0.0
+cp build/app/outputs/flutter-apk/app-release.apk voxgale-v1.0.0.apk
+gh release create v1.0.0 voxgale-v1.0.0.apk --title v1.0.0
 ```
 
 ## Development

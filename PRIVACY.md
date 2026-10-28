@@ -1,8 +1,8 @@
-# Privacy Policy — Voxtral Live
+# Privacy Policy — VoxGale
 
 _Last updated: 2026-10-28_
 
-Voxtral Live is a personal transcription app. It records audio from your
+VoxGale is a personal transcription app. It records audio from your
 device's microphone and sends it to Mistral's API for transcription, using
 an API key you provide. This policy states what the app records, where the
 data goes, and how it is deleted. It applies to the Android app distributed

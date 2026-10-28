@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/mistral/key_validation_client.dart';
-import 'package:voxtral_live/mistral/mistral_api_exception.dart';
+import 'package:voxgale/mistral/key_validation_client.dart';
+import 'package:voxgale/mistral/mistral_api_exception.dart';
 
 class MockDio extends Mock implements Dio {}
 

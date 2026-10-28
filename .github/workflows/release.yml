@@ -3,7 +3,7 @@ name: Release
 # Ship flow (Phase 4, design P4-D2): pushing a tag matching v* runs the
 # analyze + test suite, builds the signed release APK, verifies its
 # signature, and publishes a GitHub Release with the APK attached as
-# voxtral-live-<tag>.apk. The signing key comes from repository secrets
+# voxgale-<tag>.apk. The signing key comes from repository secrets
 # (see README.md, Release) and never enters the repository.
 
 on:
@@ -63,7 +63,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF_NAME}"
-          cp build/app/outputs/flutter-apk/app-release.apk "voxtral-live-${tag}.apk"
-          gh release create "$tag" "voxtral-live-${tag}.apk" \
+          cp build/app/outputs/flutter-apk/app-release.apk "voxgale-${tag}.apk"
+          gh release create "$tag" "voxgale-${tag}.apk" \
             --title "$tag" \
-            --notes "Voxtral Live ${tag} — signed release APK for sideloading. See README.md for install instructions and PRIVACY.md for the privacy policy."
+            --notes "VoxGale ${tag} — signed release APK for sideloading. See README.md for install instructions and PRIVACY.md for the privacy policy."

@@ -49,7 +49,7 @@ String transcriptToPlainText(
   MistralConfig config,
 ) {
   final lines = <String>[
-    'Voxtral Live transcript',
+    'VoxGale transcript',
     '${formatDateTime(session.startedAt)} · '
         '${formatElapsed(session.durationSeconds)} · '
         '${modelLabel(session.model, config)} · ${_sourceLine(session)}',

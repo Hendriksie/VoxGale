@@ -1,4 +1,4 @@
-name: voxtral_live
+name: voxgale
 description: "Live conversation transcription powered by the user's own Mistral API key."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.

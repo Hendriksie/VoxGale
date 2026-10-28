@@ -32,7 +32,7 @@ Generate the release keystore once at `android/app/upload-keystore.jks` with `ke
 
 ### P4-D2 — Release workflow: tag-triggered, verify-then-build, signing key from secrets
 
-`.github/workflows/release.yml`, triggered on pushes of tags matching `v*`: checkout → setup Java 17 (temurin) → setup Flutter (stable, `subosito/flutter-github-action`) → `flutter pub get` → `flutter analyze` → `flutter test` (the suite mocks the Mistral layer and never hits the network, so CI is safe) → decode the keystore and `key.properties` from repository secrets into the build directory → `flutter build apk --release` → create the GitHub Release named after the tag with the APK attached as `voxtral-live-<tag>.apk` (`gh release create`). The README documents the identical manual steps (local build + `gh release create` or the GitHub UI) as the fallback when Actions is unavailable, producing the same signed artifact.
+`.github/workflows/release.yml`, triggered on pushes of tags matching `v*`: checkout → setup Java 17 (temurin) → setup Flutter (stable, `subosito/flutter-github-action`) → `flutter pub get` → `flutter analyze` → `flutter test` (the suite mocks the Mistral layer and never hits the network, so CI is safe) → decode the keystore and `key.properties` from repository secrets into the build directory → `flutter build apk --release` → create the GitHub Release named after the tag with the APK attached as `voxgale-<tag>.apk` (`gh release create`). The README documents the identical manual steps (local build + `gh release create` or the GitHub UI) as the fallback when Actions is unavailable, producing the same signed artifact.
 
 The committed machine-local `org.gradle.java.home` in `android/gradle.properties` breaks clean-checkout builds — the path exists only on the dev machine. This change moves the setting to the user-level `~/.gradle/gradle.properties` (created locally by a task, documented in the README's build-from-source section) and removes it from the committed file, which becomes machine-independent; the workflow then relies on `JAVA_HOME` from setup-java.
 
@@ -63,6 +63,14 @@ Install the release APK on the physical device (the Pixel used for all smoke tes
 *Rationale:* the plan's Phase 4 is "dogfood, keep a friction list, then v1.1 from the top friction points"; a versioned repo file works offline and survives, and keeps dogfooding independent of the issue tracker.
 
 *Alternatives considered:* GitHub issues with a label — rejected for v1 (couples dogfooding to the tracker); it can be adopted at triage time if the list grows.
+
+### P4-D6 — App rename: Voxtral Live → VoxGale (user decision, 2026-10-28)
+
+The app is renamed to **VoxGale** — a name that does not contain a Mistral model name — before the first release is cut. The rename is a code + packaging change, not a rebrand of the API surface: references to Mistral as the provider and to Voxtral model IDs stay (factual attribution and pinned model IDs). What changes: the display name everywhere users see it (`android:label`, the `MaterialApp` title, the app-bar title, the capture notification's title, the exported-transcript header), the Android identity (`applicationId` + `namespace` → `dev.hendriksie.voxgale`, `MainActivity.kt` moved to the matching path with its package declaration), the Dart package name (`pubspec.yaml` + every `package:voxtral_live/` import — mechanical, tests only), the internal IDs (notification channel `voxgale_capture`, Drift database `voxgale`, integration-test temp dir), the release keystore (regenerated with `CN=VoxGale` — the old key signed nothing that shipped, so replacing it is free), and the release asset name (`voxgale-<tag>.apk` in the workflow, README, and release notes). The `.iml` files are renamed to match.
+
+*Rationale:* the applicationId and the signing key are the two things that become effectively permanent once real users install — changing them later means a different app and a broken update path. Nothing has shipped (the release does not exist; only the developer's device has a build), so the full rename is free now. The keystore's CN is invisible metadata, but regenerating it now keeps the release story coherent.
+
+*Alternatives considered:* display-name-only rename — rejected (leaves `dev.hendriksie.voxtral_live` and `package:voxtral_live` locked in at first install); renaming after the first release — rejected (the applicationId/signing-key change would orphan installed copies); keeping the old keystore CN — rejected (invisible, but incoherent once nothing else carries the old name).
 
 ## Risks / Trade-offs
 

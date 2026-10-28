@@ -5,8 +5,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/session/live_session_controller.dart';
-import 'package:voxtral_live/session/session_models.dart';
+import 'package:voxgale/session/live_session_controller.dart';
+import 'package:voxgale/session/session_models.dart';
 
 import 'fakes.dart';
 

@@ -3,9 +3,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/diarization_pass.dart';
-import 'package:voxtral_live/storage/storage.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/diarization_pass.dart';
+import 'package:voxgale/storage/storage.dart';
 
 class MockBatchTranscriptionClient extends Mock
     implements BatchTranscriptionClient {}

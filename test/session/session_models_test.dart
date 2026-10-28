@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/mistral/realtime/realtime_events.dart';
-import 'package:voxtral_live/mistral/transcript.dart';
-import 'package:voxtral_live/session/session_models.dart';
+import 'package:voxgale/mistral/realtime/realtime_events.dart';
+import 'package:voxgale/mistral/transcript.dart';
+import 'package:voxgale/session/session_models.dart';
 
 void main() {
   group('SessionEvent JSON round-trip', () {

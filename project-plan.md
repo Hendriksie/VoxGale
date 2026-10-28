@@ -1,4 +1,4 @@
-# Voxtral Live Transcription App — Project Plan
+# VoxGale Transcription App — Project Plan
 
 **Project type:** Personal / hobby app, built with Flutter
 **Developer profile:** Experienced developer, working solo

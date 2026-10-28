@@ -1,7 +1,7 @@
 schema: spec-driven
 
 context: |
-  # Voxtral Live Transcription App (Android, Flutter)
+  # VoxGale Transcription App (Android, Flutter)
 
   Live-capture + file-transcription app powered by the user's own Mistral API key.
 

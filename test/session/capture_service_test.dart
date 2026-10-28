@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/capture_service.dart';
-import 'package:voxtral_live/session/capture_task_handler.dart';
-import 'package:voxtral_live/session/session_models.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/capture_service.dart';
+import 'package:voxgale/session/capture_task_handler.dart';
+import 'package:voxgale/session/session_models.dart';
 
 class MockForegroundTaskGateway extends Mock implements ForegroundTaskGateway {}
 

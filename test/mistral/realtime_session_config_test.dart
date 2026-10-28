@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/mistral/realtime/realtime_session_config.dart';
+import 'package:voxgale/mistral/realtime/realtime_session_config.dart';
 
 void main() {
   test('diarize and turn detection are mutually exclusive', () {

@@ -8,9 +8,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:voxtral_live/app/transcript_export.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/storage/storage.dart';
+import 'package:voxgale/app/transcript_export.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/storage/storage.dart';
 
 const config = MistralConfig.defaults;
 
@@ -62,7 +62,7 @@ void main() {
     test('includes the header and labelled, timestamped segments', () {
       final text = transcriptToPlainText(session, segments, config);
 
-      expect(text, contains('Voxtral Live transcript'));
+      expect(text, contains('VoxGale transcript'));
       expect(text, contains('2026-10-26 14:32 · 1:05 · Mini · File: interview.mp3'));
       expect(text, contains('[0:00] Speaker 1: Hello there'));
       expect(text, contains('[0:02] Speaker 2: Hi'));

@@ -1,4 +1,4 @@
-package dev.hendriksie.voxtral_live
+package dev.hendriksie.voxgale
 
 import io.flutter.embedding.android.FlutterActivity
 

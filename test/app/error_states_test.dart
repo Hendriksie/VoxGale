@@ -8,10 +8,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/app/error_states.dart';
-import 'package:voxtral_live/app/theme.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/capture_service.dart';
+import 'package:voxgale/app/error_states.dart';
+import 'package:voxgale/app/theme.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/capture_service.dart';
 
 void main() {
   /// Pumps [child] under [theme] (the app's light/dark theme builders).

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:voxtral_live/mistral/realtime/realtime_events.dart';
+import 'package:voxgale/mistral/realtime/realtime_events.dart';
 
 /// Fixtures recorded from the Voxtral 3 realtime transcription documentation
 /// (event shapes as of 2026-10-21).

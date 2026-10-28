@@ -6,10 +6,10 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:record/record.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/capture_task_handler.dart';
-import 'package:voxtral_live/session/session_models.dart';
-import 'package:voxtral_live/session/wav_file_writer.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/capture_task_handler.dart';
+import 'package:voxgale/session/session_models.dart';
+import 'package:voxgale/session/wav_file_writer.dart';
 
 class MockRealtimeTranscriptionClient extends Mock
     implements RealtimeTranscriptionClient {}

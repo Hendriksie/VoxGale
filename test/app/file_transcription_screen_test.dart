@@ -11,14 +11,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:voxtral_live/app/error_states.dart';
-import 'package:voxtral_live/app/file_transcription_screen.dart';
-import 'package:voxtral_live/app/settings_screen.dart';
-import 'package:voxtral_live/app/transcript_widgets.dart';
-import 'package:voxtral_live/mistral/mistral.dart';
-import 'package:voxtral_live/session/file_transcription_controller.dart';
-import 'package:voxtral_live/session/session_models.dart';
-import 'package:voxtral_live/session/session_providers.dart';
+import 'package:voxgale/app/error_states.dart';
+import 'package:voxgale/app/file_transcription_screen.dart';
+import 'package:voxgale/app/settings_screen.dart';
+import 'package:voxgale/app/transcript_widgets.dart';
+import 'package:voxgale/mistral/mistral.dart';
+import 'package:voxgale/session/file_transcription_controller.dart';
+import 'package:voxgale/session/session_models.dart';
+import 'package:voxgale/session/session_providers.dart';
 
 import 'fakes.dart';
 
