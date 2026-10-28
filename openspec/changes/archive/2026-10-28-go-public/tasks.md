@@ -44,9 +44,10 @@
 ## 7. Validation and go-public (user steps)
 
 - [x] 7.1 Run `openspec validate 2026-10-28-go-public --strict` and `openspec validate --specs --strict`; run `flutter analyze` and the full `flutter test` suite. All clean. (Verified: change valid under `--strict`; main specs valid under `--specs --strict`; analyze clean; 353/353 tests pass.)
-- [ ] 7.2 User steps in the GitHub UI (this environment cannot do them): paste the drafted notes into the v1.0.0 and v1.1.0 releases from `docs/release-notes/`; set the repo description ("Live conversation transcription for Android, powered by your own Mistral API key") and topics (`flutter`, `android`, `dart`, `transcription`, `speech-to-text`, `mistral`); upload `docs/assets/social-preview.png` as the social preview; optionally enable Discussions with an "Ideas" category. (Partially done by the user 2026-10-28: release notes pasted, description/topics set.)
+- [x] 7.2 User steps in the GitHub UI (this environment cannot do them): paste the drafted notes into the v1.0.0 and v1.1.0 releases from `docs/release-notes/`; set the repo description ("Live conversation transcription for Android, powered by your own Mistral API key") and topics (`flutter`, `android`, `dart`, `transcription`, `speech-to-text`, `mistral`); enable Discussions with an "Ideas" category. (Verified 2026-10-28: user pasted the release notes and set description/topics; API confirms the description, all six topics, and has_discussions=true.)
+- [ ] 7.2b Upload `docs/assets/social-preview.png` as the repository social preview (Settings → General → "Social preview"). (Still open: the repo page's og:image is GitHub's auto-generated card, so the custom image is not uploaded yet.)
 - [x] 7.3 Commit and push the change; verify GitHub renders the license badge, the changelog link, and the README links. (Verified: committed in group commits and pushed to origin/master.)
-- [ ] 7.4 Flip the repository to public (the final user step, after 7.1–7.3 are green). (User: "gonna do that soon". After flipping: verify the SECURITY.md advisories link resolves and GitHub detects the MIT license.)
+- [x] 7.4 Flip the repository to public (the final user step, after 7.1–7.3 are green). (Verified 2026-10-28: API reports visibility=public; the repo page shows the Public badge, the MIT license badge, the Security tab, and the rendered README with header image and screenshots; the SECURITY.md advisories link now resolves to the sign-in page instead of 404.)
 
 ## Workflow follow-up
 

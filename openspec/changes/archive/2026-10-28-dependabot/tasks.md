@@ -11,9 +11,9 @@
 
 ## 2. Repository settings (user steps)
 
-- [ ] 2.1 Enable **Dependabot alerts**: Settings → Security & analysis →
+- [x] 2.1 Enable **Dependabot alerts**: Settings → Security & analysis →
   "Dependabot alerts". (Free; surfaces pub dependency-graph
-  vulnerabilities on the Security tab.)
+  vulnerabilities on the Security tab.) (Verified 2026-10-28: user enabled it. End-to-end proof: Dependabot already opened PRs #1 (checkout 6→7) and #2 (setup-java 5→6) from the new dependabot.yml.)
 - [ ] 2.2 Optionally enable **Dependabot security updates** (same page) to
   get automatic fix PRs for vulnerable dependencies.
 
