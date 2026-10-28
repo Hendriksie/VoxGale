@@ -495,6 +495,61 @@ void main() {
     });
   });
 
+  group('key presence tracking (v1.1: dogfood friction — stale message)', () {
+    test('shows the missing-key state while no key is saved, without a '
+        'start attempt', () async {
+      apiKeyStore.key = null;
+      controller();
+
+      await waitFor(() =>
+          state().phase == LiveSessionPhase.error && state().missingApiKey);
+
+      expect(state().error, contains('No API key saved'));
+    });
+
+    test('dismisses the missing-key state as soon as a key is saved '
+        '(no restart)', () async {
+      apiKeyStore.key = null;
+      controller();
+      await waitFor(() => state().missingApiKey);
+
+      // The settings controller invalidates apiKeyProvider after a save;
+      // the presence provider re-computes and the listener dismisses.
+      await apiKeyStore.saveKey('test-key');
+      container.invalidate(apiKeyProvider);
+
+      await waitFor(() =>
+          state().phase == LiveSessionPhase.idle && !state().missingApiKey);
+      expect(state().hasError, isFalse);
+    });
+
+    test('shows the missing-key state again when the key is removed '
+        '(no restart)', () async {
+      controller();
+      await waitFor(() => state().phase == LiveSessionPhase.idle);
+
+      await apiKeyStore.deleteKey();
+      container.invalidate(apiKeyProvider);
+
+      await waitFor(() => state().missingApiKey);
+      expect(state().phase, LiveSessionPhase.error);
+      expect(state().error, contains('No API key saved'));
+    });
+
+    test('ignores presence changes while a session runs', () async {
+      await startActiveSession();
+
+      await apiKeyStore.deleteKey();
+      container.invalidate(apiKeyProvider);
+      await waitFor(() => container.read(apiKeyPresentProvider).value == false);
+      // Let the controller's listener run — it must ignore the change.
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(state().phase, LiveSessionPhase.active);
+      expect(state().missingApiKey, isFalse);
+    });
+  });
+
   group('turn grouping (4.1)', () {
     test('groups text deltas into turns and closes blocks on turn '
         'boundaries (turn-detection mode)', () async {

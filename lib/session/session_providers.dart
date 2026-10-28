@@ -31,6 +31,17 @@ final apiKeyStoreProvider =
 final apiKeyProvider =
     FutureProvider<String?>((ref) => ref.watch(apiKeyStoreProvider).readKey());
 
+/// Whether an API key is currently saved. Presence only — the key value
+/// never propagates past this provider (the store and the lib/mistral
+/// clients are the only readers of the value). The settings controller
+/// invalidates [apiKeyProvider] after save/remove, so this re-computes and
+/// its watchers (the missing-key states) follow key changes without a
+/// restart (empty-error-states spec).
+final apiKeyPresentProvider = FutureProvider<bool>((ref) async {
+  final key = await ref.watch(apiKeyProvider.future);
+  return key != null && key.isNotEmpty;
+});
+
 /// The app's SQLite database, shared by the storage repositories (design
 /// P2-D3). Closed when the provider is disposed.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {

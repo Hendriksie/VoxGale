@@ -386,7 +386,42 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       unawaited(_audioFocusGateway?.release());
       _audioFocusGateway = null;
     });
+    // The key's presence only — the key itself is read inside the service
+    // isolate and inside the lib/mistral/ clients, never here. Tracked
+    // reactively so the missing-key state follows key changes without a
+    // restart (empty-error-states spec; dogfood friction 2026-10-28).
+    ref.listen(apiKeyPresentProvider, (previous, next) {
+      next.whenData((present) {
+        if (ref.mounted) {
+          _onKeyPresenceChanged(present);
+        }
+      });
+    });
     return const LiveSessionState();
+  }
+
+  /// Keeps the missing-key state current with the key's presence: shown
+  /// while no key is saved and no capture is in flight (empty-error-states
+  /// spec: opening the screen with no key shows the state), dismissed as
+  /// soon as a key is saved. A running session is unaffected — the next
+  /// start re-checks the key.
+  void _onKeyPresenceChanged(bool present) {
+    if (_captureInFlight) {
+      return;
+    }
+    final isMissingKeyState =
+        state.phase == LiveSessionPhase.error && state.missingApiKey;
+    if (present) {
+      if (isMissingKeyState) {
+        state = const LiveSessionState();
+      }
+    } else if (!isMissingKeyState) {
+      state = const LiveSessionState(
+        phase: LiveSessionPhase.error,
+        error: 'No API key saved. Add your Mistral API key to start a session.',
+        missingApiKey: true,
+      );
+    }
   }
 
   // -- Session-scoped private state ----------------------------------------
