@@ -130,8 +130,8 @@ Practical v1 simplification for live mode: show the raw live text as it streams 
 - [x] Wake-lock + battery review for long sessions; app icon in orange
 
 ### Phase 4 — Ship & iterate *(ongoing, guilt-free)*
-- [ ] Dogfood for 2–4 weeks; keep a friction list
-- [ ] v1.1 from the top friction points; pull from v2 ideas only when motivated
+- [x] Dogfood for 2–4 weeks; keep a friction list
+- [x] v1.1 from the top friction points; pull from v2 ideas only when motivated
 
 ---
 

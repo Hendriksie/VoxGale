@@ -43,4 +43,4 @@ Each entry:
 
 ## Weekly notes
 
-<!-- One line per week: sessions run, or "no friction this week". -->
+- **2026-10-28** — Dogfooding stopped early by user decision ("time to stop with the dogfooding process and finish it up; new bugs/findings will be proposed when I find them"). One day of real use plus the v1.1 smoke produced 3 findings: 2 stale-UI-state frictions (fixed and device-verified in v1.1, change `2026-10-28-v1-1-dogfood-friction`) and 1 open observation (session lost when the battery exemption was revoked mid-session). New findings will be added here as they come up.
