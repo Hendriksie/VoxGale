@@ -1,0 +1,43 @@
+name: CI
+
+# Continuous integration for pushes to master and pull requests: the same
+# analyze + test gates the release workflow runs before building an APK, so
+# a public repository shows a green check on every PR. First-party Flutter
+# setup only, pinned like release.yml (no third-party Flutter action — see
+# release.yml's header for why). No JDK/Android SDK: analyze and VM tests
+# do not build Android.
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Keep in lockstep with release.yml so CI gates what releases gate.
+  FLUTTER_VERSION: '3.47.8'
+
+jobs:
+  test:
+    # Pinned (not ubuntu-latest): the label migrates, and CI should not move
+    # under us (same reasoning as release.yml).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      # Pinned Flutter SDK from the official release archive, extracted to
+      # $HOME (see release.yml for why not into the workspace).
+      - name: Set up Flutter
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/flutter.tar.xz" \
+            "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          tar -xf "$RUNNER_TEMP/flutter.tar.xz" -C "$HOME"
+          rm -f "$RUNNER_TEMP/flutter.tar.xz"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

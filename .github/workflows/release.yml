@@ -3,7 +3,8 @@ name: Release
 # Ship flow (Phase 4, design P4-D2): pushing a tag matching v* runs the
 # analyze + test suite, builds the signed release APK, verifies its
 # signature, and publishes a GitHub Release with the APK attached as
-# voxgale-<tag>.apk. The signing key comes from repository secrets
+# voxgale-<tag>.apk and notes taken from the matching CHANGELOG.md section.
+# The signing key comes from repository secrets
 # (see README.md, Release) and never enters the repository.
 #
 # Flutter and the Android SDK are installed directly from the official
@@ -103,12 +104,23 @@ jobs:
           BT=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/ | tail -1)
           "$BT/apksigner" verify build/app/outputs/flutter-apk/app-release.apk
 
+      # Release notes come from the matching CHANGELOG.md section
+      # (## [<tag>]); the one-line default is the fallback for a tag that
+      # has no section yet.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF_NAME}"
           cp build/app/outputs/flutter-apk/app-release.apk "voxgale-${tag}.apk"
+          notes="$(awk -v tag="$tag" '
+            index($0, "## [" tag "]") == 1 { found = 1; next }
+            /^## / { if (found) exit }
+            found { print }
+          ' CHANGELOG.md)"
+          if [ -z "$notes" ]; then
+            notes="VoxGale ${tag} — signed release APK for sideloading. See README.md for install instructions and PRIVACY.md for the privacy policy."
+          fi
           gh release create "$tag" "voxgale-${tag}.apk" \
             --title "$tag" \
-            --notes "VoxGale ${tag} — signed release APK for sideloading. See README.md for install instructions and PRIVACY.md for the privacy policy."
+            --notes "$notes"

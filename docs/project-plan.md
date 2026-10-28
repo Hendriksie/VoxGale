@@ -1,5 +1,10 @@
 # VoxGale Transcription App — Project Plan
 
+> **Historical record.** This was the v1 plan; every phase is complete as
+> of v1.1.0 (2026-10-28). Planning now goes through the OpenSpec flow —
+> see [CONTRIBUTING.md](../CONTRIBUTING.md) and `openspec/`. Future ideas
+> live in [ideas.md](ideas.md) (the §9 parking lot below was moved there).
+
 **Project type:** Personal / hobby app, built with Flutter
 **Developer profile:** Experienced developer, working solo
 **Budget:** Free / hobby tier (BYO Mistral API key — users pay only for what they transcribe)

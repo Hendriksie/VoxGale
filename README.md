@@ -126,7 +126,10 @@ gh release create v1.0.0 voxgale-v1.0.0.apk --title v1.0.0
 
 ## Development
 
-- Project plan and milestones: [project-plan.md](project-plan.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Ideas (parking lot): [docs/ideas.md](docs/ideas.md)
+- Historical v1 project plan: [docs/project-plan.md](docs/project-plan.md)
 - Change workflow: [OpenSpec](openspec/) — every change starts with a
   proposal in `openspec/changes/`; validate with `openspec validate --strict`
   before claiming a task done.
