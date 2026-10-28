@@ -43,26 +43,39 @@ jobs:
       # Pinned Flutter SDK from the official release archive. Extracted to
       # $HOME — NOT into the workspace: `flutter analyze` walks the package
       # root, and an SDK extracted inside the checkout makes it analyze the
-      # SDK's own sources (190k bogus errors; reproduced locally).
+      # SDK's own sources (190k bogus errors; reproduced locally). The
+      # tarball is deleted right after extraction — GitHub runners have
+      # limited free disk and the build later ran out of space.
       - name: Set up Flutter
         run: |
           curl -fsSL -o "$RUNNER_TEMP/flutter.tar.xz" \
             "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
           tar -xf "$RUNNER_TEMP/flutter.tar.xz" -C "$HOME"
+          rm -f "$RUNNER_TEMP/flutter.tar.xz"
           echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
 
       # The Android SDK the build runs against (compileSdk 36 / build-tools
-      # 36.0.0; AGP auto-downloads the NDK flutter.ndkVersion pins).
+      # 36.0.0; AGP auto-downloads the NDK flutter.ndkVersion pins — the NDK
+      # is genuinely required: the jni plugin builds libdartjni.so into the
+      # APK — plus CMake for it).
       - name: Set up the Android SDK
         run: |
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-          curl -fsSL -o cmdtools.zip \
+          curl -fsSL -o "$RUNNER_TEMP/cmdtools.zip" \
             "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
-          unzip -q cmdtools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          unzip -q "$RUNNER_TEMP/cmdtools.zip" -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          rm -f "$RUNNER_TEMP/cmdtools.zip"
           mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
           yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      # Disk-space visibility: the release build once failed with
+      # "No space left on device" during packaging on a runner with ~14 GB
+      # free — Flutter SDK + Android SDK + NDK + Gradle caches + build
+      # intermediates add up.
+      - name: Report disk space
+        run: df -h / "$HOME" "$ANDROID_SDK_ROOT"
 
       - run: flutter pub get
       - run: flutter analyze
