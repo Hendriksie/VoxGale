@@ -32,7 +32,7 @@ accounts, no cloud sync, and no telemetry — see [PRIVACY.md](PRIVACY.md).
 ## Install
 
 1. Download `voxgale-<version>.apk` from the
-   [Releases](https://github.com/Hendriksie/opencode-openspec-test/releases)
+   [Releases](https://github.com/Hendriksie/VoxGale/releases)
    page.
 2. Open the downloaded file and allow "install unknown apps" for the app you
    downloaded it with (browser or file manager), if prompted.
