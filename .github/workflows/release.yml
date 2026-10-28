@@ -29,22 +29,27 @@ env:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # Pinned (not ubuntu-latest): the label migrates to Ubuntu 26, and the
+    # release build should not move under us.
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      # Pinned Flutter SDK from the official release archive.
+      # Pinned Flutter SDK from the official release archive. Extracted to
+      # $HOME — NOT into the workspace: `flutter analyze` walks the package
+      # root, and an SDK extracted inside the checkout makes it analyze the
+      # SDK's own sources (190k bogus errors; reproduced locally).
       - name: Set up Flutter
         run: |
-          curl -fsSL -o flutter.tar.xz \
+          curl -fsSL -o "$RUNNER_TEMP/flutter.tar.xz" \
             "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
-          tar -xf flutter.tar.xz
-          echo "$PWD/flutter/bin" >> "$GITHUB_PATH"
+          tar -xf "$RUNNER_TEMP/flutter.tar.xz" -C "$HOME"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
 
       # The Android SDK the build runs against (compileSdk 36 / build-tools
       # 36.0.0; AGP auto-downloads the NDK flutter.ndkVersion pins).
