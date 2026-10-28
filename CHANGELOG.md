@@ -6,6 +6,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v1.2.0] - 2026-10-28
+
+### Changed
+
+- New launcher icon: a white speech bubble with a waveform, replacing the
+  previous waveform glyph.
+
 ## [v1.1.0] - 2026-10-28
 
 ### Fixed
