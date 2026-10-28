@@ -33,6 +33,14 @@ Each entry:
 - **Severity** — `annoying`
 - **Disposition** — → v1.1 (change `2026-10-28-v1-1-dogfood-friction`): the battery exemption is re-checked when the app returns to the foreground; the prompt dismisses once the app is exempt.
 
+### 2026-10-28 — Session lost when the battery exemption was revoked mid-session
+
+- **Date** — 2026-10-28
+- **What happened** — Observed during the v1.1 device smoke: a live session was recording (transcript streaming, 0:43 elapsed); the battery exemption was revoked in the system settings (Settings → Apps → VoxGale → Battery → Restricted) while the app was backgrounded; on return the app process had been killed by the system (GrapheneOS battery management) — the session was gone (fresh idle state, nothing saved).
+- **What you expected** — The foreground service should keep capture alive through a trip to the system settings; a background kill should at least leave a recoverable trace (the partial transcript or a "session was interrupted" state).
+- **Severity** — `data lost`
+- **Disposition** — open (observed during the v1.1 smoke; the kill followed the exemption revoke on GrapheneOS — candidate follow-up: detect a dead capture service on resume and offer to recover or restart the session, or warn when the exemption is revoked mid-session).
+
 ## Weekly notes
 
 <!-- One line per week: sessions run, or "no friction this week". -->
