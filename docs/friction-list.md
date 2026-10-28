@@ -24,6 +24,13 @@ Each entry:
 - **What you expected** — After updating the API-key, the red message should go away (if its set) or show again (when its removed).
 - **Severity** — `annoying`
 
+### 2026-10-28 — Battery flaky message
+
+- **Date** — 2026-10-28
+- **What happened** — After granting unrestircted battery access in adnroid and going back to the application, the "Allow unrestricted battery use" message is still visibile.
+- **What you expected** — After granting unrestricted access, the message should go away automatically.
+- **Severity** — `annoying`
+
 ## Weekly notes
 
 <!-- One line per week: sessions run, or "no friction this week". -->
