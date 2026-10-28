@@ -101,7 +101,7 @@ While paused, the system SHALL NOT send any audio to the transcription API, so a
 - **THEN** the elapsed session time shown in the app and in the persistent notification does not advance until the session resumes
 
 ### Requirement: Check background battery restrictions
-The system SHALL check whether the app is exempt from battery optimization when a session is about to start or while it is active, and SHALL prompt the user to allow unrestricted background activity when it is not, explaining that capture may otherwise be killed while the screen is off.
+The system SHALL check whether the app is exempt from battery optimization when a session is about to start or while it is active, and SHALL prompt the user to allow unrestricted background activity when it is not, explaining that capture may otherwise be killed while the screen is off. The system SHALL re-check the exemption when the app returns to the foreground and SHALL dismiss the prompt once the app is exempt, without restarting the app.
 
 #### Scenario: App not exempt from battery optimization
 - **WHEN** a session starts and the app is not exempt from battery optimization
@@ -110,6 +110,10 @@ The system SHALL check whether the app is exempt from battery optimization when 
 #### Scenario: App already exempt
 - **WHEN** a session starts and the app is already exempt from battery optimization
 - **THEN** no prompt is shown and the session starts normally
+
+#### Scenario: Exemption granted while the app is backgrounded
+- **WHEN** the user grants the exemption in the system battery settings and returns to the app
+- **THEN** the prompt is dismissed without restarting the app
 
 ### Requirement: Indicate connection interruptions in the session UI
 The system SHALL indicate in the session UI, outside the transcript text, when the transcription stream reconnects, when buffered audio is replayed, and when buffered audio was dropped, so the user can tell a seamless session from one with interruptions.
