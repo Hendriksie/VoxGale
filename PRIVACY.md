@@ -36,6 +36,14 @@ as an APK from this repository's Releases.
   check is an unauthenticated request for the public release list to
   `api.github.com`; it sends no API key, no account, and no other user
   data.
+- **When you send a transcript to an agent** ("Send to agent" on a
+  transcript), the transcript text is sent to the Mistral API (Conversations
+  endpoint) under your own API key, over TLS, with conversation storage
+  disabled (`store: false`), so no conversation history is kept on Mistral's
+  side. Agent and conversation processing is not covered by Mistral's
+  zero-data-retention, and the agent runs with its own configured tools
+  (web search, connectors, document libraries), which may process the
+  transcript further — that is your own agent configuration.
 - **Nothing else leaves the device** — apart from the Mistral API calls
   and the update check above, the app makes no network requests.
 

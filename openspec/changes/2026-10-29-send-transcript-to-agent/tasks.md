@@ -27,14 +27,14 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Add the agent-flow bullet to `PRIVACY.md` under "Where the data goes": transcript text sent to the Mistral API (Conversations endpoint) under the user's own key with `store: false`, not covered by Mistral's zero-data-retention, and the agent's configured tools may process the transcript (privacy-policy spec delta); verify the policy still matches the privacy-policy spec's plain-language requirements.
-- [ ] 5.2 Add an `Added` entry under `## [Unreleased]` in `CHANGELOG.md` ("Send a saved transcript to a Mistral agent from the transcript view; pick the agent in Settings; the reply and its token usage are shown and kept with the transcript"), matching the file's Keep a Changelog format.
-- [ ] 5.3 Mark the "Mistral agent integration" idea in `docs/ideas.md` as promoted (change `2026-10-29-send-transcript-to-agent`), keeping the researched caveats (token pricing, ZDR exclusion, agent tools) as notes.
+- [x] 5.1 Add the agent-flow bullet to `PRIVACY.md` under "Where the data goes": transcript text sent to the Mistral API (Conversations endpoint) under the user's own key with `store: false`, not covered by Mistral's zero-data-retention, and the agent's configured tools may process the transcript (privacy-policy spec delta); verify the policy still matches the privacy-policy spec's plain-language requirements.
+- [x] 5.2 Add an `Added` entry under `## [Unreleased]` in `CHANGELOG.md` ("Send a saved transcript to a Mistral agent from the transcript view; pick the agent in Settings; the reply and its token usage are shown and kept with the transcript"), matching the file's Keep a Changelog format.
+- [x] 5.3 Mark the "Mistral agent integration" idea in `docs/ideas.md` as promoted (change `2026-10-29-send-transcript-to-agent`), keeping the researched caveats (token pricing, ZDR exclusion, agent tools) as notes.
 
 ## 6. Verification
 
-- [ ] 6.1 Run `flutter analyze` (clean) and the full `flutter test` suite (all green); verify no test touches a platform channel or the live Mistral/GitHub APIs (all seams faked, per the test-coverage spec).
-- [ ] 6.2 Run `openspec validate 2026-10-29-send-transcript-to-agent --strict` and verify the change validates.
+- [x] 6.1 Run `flutter analyze` (clean) and the full `flutter test` suite (all green); verify no test touches a platform channel or the live Mistral/GitHub APIs (all seams faked, per the test-coverage spec). (Verified: analyze clean, 478/478 tests pass.)
+- [x] 6.2 Run `openspec validate 2026-10-29-send-transcript-to-agent --strict` and verify the change validates. (Verified: valid.)
 - [ ] 6.3 Physical-device run with the user's real key (pending user verification; this machine has no device): save a key, pick an agent in Settings, open a saved transcript, tap "Send to agent", and verify the reply appears with token usage, persists across an app restart, and is shared via the share sheet; verify a send with no agent selected points to Settings and a deleted agent produces a retryable error. Record the result in `spike-notes.md` before archiving.
 
 ## Workflow follow-up

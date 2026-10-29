@@ -7,8 +7,9 @@ historical v1 plan lives at [project-plan.md](project-plan.md).
 
 ## From the v1 project plan (§9, historical)
 
-- **Mistral agent integration** — after a session, let the user send the
-  transcript to a Mistral agent they've configured (summarize, extract
+- **Mistral agent integration** — PROMOTED (change
+  `2026-10-29-send-transcript-to-agent`): after a session, the user sends
+  the transcript to a Mistral agent they've configured (summarize, extract
   action items, file notes). Keep the data model export-friendly so this is
   a drop-in feature. Researched 2026-10-29 against docs.mistral.ai: the
   same user API key authenticates the Agents/Conversations API on

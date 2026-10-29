@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Send a saved transcript to a Mistral agent: pick the agent in Settings
+  (listed from your workspace via the API), then "Send to agent" on the
+  transcript view sends the transcript's Markdown export as a one-shot
+  conversation (no history kept server-side). The agent's reply and its token
+  usage are shown on the transcript and kept with it, and can be shared via
+  the share sheet.
+
 ## [v1.4.0] - 2026-10-29
 
 ### Added
