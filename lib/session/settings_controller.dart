@@ -25,6 +25,10 @@ class SettingsState {
     this.defaultBatchModel,
     this.languageHint,
     this.keepScreenOn = false,
+    this.agents = const [],
+    this.agentLoading = false,
+    this.agentError = '',
+    this.selectedAgentId,
   });
 
   /// Whether the initial load (key presence + preferences) has completed.
@@ -52,8 +56,24 @@ class SettingsState {
   /// 2026-10-29-keep-screen-on-during-sessions); off by default.
   final bool keepScreenOn;
 
+  /// The workspace's agents fetched for the agent picker (change
+  /// 2026-10-29-send-transcript-to-agent); empty until loaded.
+  final List<AgentInfo> agents;
+
+  /// Whether the agent list is being fetched.
+  final bool agentLoading;
+
+  /// The agent-list load error; empty when there is none.
+  final String agentError;
+
+  /// The selected agent's id, or null when none is selected.
+  final String? selectedAgentId;
+
   /// Whether [error] carries a message.
   bool get hasError => error.isNotEmpty;
+
+  /// Whether [agentError] carries a message.
+  bool get hasAgentError => agentError.isNotEmpty;
 
   /// Sentinel for [copyWith]: omit the argument to keep the current value;
   /// pass an explicit null to clear a nullable field.
@@ -68,6 +88,10 @@ class SettingsState {
     Object? defaultBatchModel = _keep,
     Object? languageHint = _keep,
     bool? keepScreenOn,
+    List<AgentInfo>? agents,
+    bool? agentLoading,
+    String? agentError,
+    Object? selectedAgentId = _keep,
   }) =>
       SettingsState(
         loaded: loaded ?? this.loaded,
@@ -82,6 +106,12 @@ class SettingsState {
             ? this.languageHint
             : languageHint as String?,
         keepScreenOn: keepScreenOn ?? this.keepScreenOn,
+        agents: agents ?? this.agents,
+        agentLoading: agentLoading ?? this.agentLoading,
+        agentError: agentError ?? this.agentError,
+        selectedAgentId: selectedAgentId == _keep
+            ? this.selectedAgentId
+            : selectedAgentId as String?,
       );
 
   @override
@@ -95,7 +125,11 @@ class SettingsState {
           info == other.info &&
           defaultBatchModel == other.defaultBatchModel &&
           languageHint == other.languageHint &&
-          keepScreenOn == other.keepScreenOn;
+          keepScreenOn == other.keepScreenOn &&
+          agents == other.agents &&
+          agentLoading == other.agentLoading &&
+          agentError == other.agentError &&
+          selectedAgentId == other.selectedAgentId;
 
   @override
   int get hashCode => Object.hash(
@@ -107,6 +141,10 @@ class SettingsState {
         defaultBatchModel,
         languageHint,
         keepScreenOn,
+        agents,
+        agentLoading,
+        agentError,
+        selectedAgentId,
       );
 }
 
@@ -133,6 +171,7 @@ class SettingsController extends Notifier<SettingsState> {
       defaultBatchModel: preferences.defaultBatchModel,
       languageHint: preferences.languageHint,
       keepScreenOn: preferences.keepScreenOn,
+      selectedAgentId: preferences.agentId,
     );
   }
 
@@ -205,12 +244,52 @@ class SettingsController extends Notifier<SettingsState> {
     await _persistPreferences();
   }
 
+  /// Fetches the workspace's agents for the agent picker (settings spec
+  /// delta, change 2026-10-29-send-transcript-to-agent). On failure the
+  /// current selection is kept and [SettingsState.agentError] is set for a
+  /// retry — there is no free-text fallback.
+  Future<void> loadAgents() async {
+    if (state.agentLoading) {
+      return;
+    }
+    state = state.copyWith(agentLoading: true, agentError: '');
+    try {
+      final client = await ref.read(agentClientProvider.future);
+      final agents = await client.listAgents();
+      if (!ref.mounted) {
+        return;
+      }
+      state = state.copyWith(agentLoading: false, agents: agents);
+    } on MistralApiException catch (e) {
+      if (!ref.mounted) {
+        return;
+      }
+      state = state.copyWith(agentLoading: false, agentError: e.message);
+    } catch (e) {
+      if (!ref.mounted) {
+        return;
+      }
+      state = state.copyWith(
+        agentLoading: false,
+        agentError: 'Could not load the agents: $e',
+      );
+    }
+  }
+
+  /// Selects the agent for send-to-agent and persists the choice (null
+  /// clears it).
+  Future<void> selectAgent(String? agentId) async {
+    state = state.copyWith(selectedAgentId: agentId, info: '');
+    await _persistPreferences();
+  }
+
   Future<void> _persistPreferences() async {
     await ref.read(preferencesRepositoryProvider).savePreferences(
           StoredPreferences(
             defaultBatchModel: state.defaultBatchModel,
             languageHint: state.languageHint,
             keepScreenOn: state.keepScreenOn,
+            agentId: state.selectedAgentId,
           ),
         );
     ref.invalidate(preferencesProvider);

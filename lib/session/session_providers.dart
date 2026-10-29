@@ -96,6 +96,24 @@ final batchTranscriptionClientProvider =
   return DioBatchTranscriptionClient(apiKey: key);
 });
 
+/// The agent client (change 2026-10-29-send-transcript-to-agent, design
+/// decision 5): the API key is read here — at client construction, exactly
+/// like the batch client — and injected only into the lib/mistral/ client.
+final agentClientProvider = FutureProvider<AgentClient>((ref) async {
+  final key = await ref.watch(apiKeyStoreProvider).readKey();
+  if (key == null || key.isEmpty) {
+    throw StateError('No API key saved');
+  }
+  return DioAgentClient(apiKey: key);
+});
+
+/// The agent selected for send-to-agent, or null when none is selected
+/// (settings spec delta; stored as a plain, non-secret preference).
+final agentIdProvider = FutureProvider<String?>((ref) async {
+  final preferences = await ref.watch(preferencesProvider.future);
+  return preferences.agentId;
+});
+
 /// The post-session diarization pass (design P1-D5, P2-D7): transcribes with
 /// the configured default batch model preference (the pinned Mini model
 /// unless the user changed it in settings).

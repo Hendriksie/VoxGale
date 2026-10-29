@@ -1,11 +1,15 @@
 // The settings screen (design P2-D4, tasks 3.1-3.2): the production API key
 // entry — validated with a cheap test request before it is saved, the value
-// never displayed — key removal, and the transcription preferences (default
-// batch model, language hint). The screen renders [SettingsState] directly
-// and owns no logic; every action goes through [SettingsController] — except
-// the Updates section (change 2026-10-29-update-tracker, task 6.3, design
-// decision 14), which watches the update check controller directly for the
-// manual "Check for updates" action.
+// never displayed — key removal, the agent picker (change
+// 2026-10-29-send-transcript-to-agent: the workspace's agents fetched through
+// the API, the chosen agent persisted), and the transcription preferences
+// (default batch model, language hint). The screen renders [SettingsState]
+// directly and owns no logic; every action goes through [SettingsController]
+// — except the Updates section (change 2026-10-29-update-tracker, task 6.3,
+// design decision 14), which watches the update check controller directly for
+// the manual "Check for updates" action.
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +39,8 @@ class SettingsScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             _ApiKeySection(state: state, controller: controller),
+            const SizedBox(height: 24),
+            _AgentSection(state: state, controller: controller),
             const SizedBox(height: 24),
             _PreferencesSection(
               state: state,
@@ -214,6 +220,125 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     if (confirmed == true && context.mounted) {
       await controller.removeKey();
     }
+  }
+}
+
+/// The agent section (change 2026-10-29-send-transcript-to-agent, settings
+/// spec delta): the picker over the workspace's agents, fetched through the
+/// Mistral API with the stored key when the section first renders with a key
+/// saved. The agent ID is persisted as a plain, non-secret preference. A
+/// failed list load keeps the previous selection and shows the shared error
+/// banner with a retry — no free-text agent ID entry.
+class _AgentSection extends ConsumerWidget {
+  const _AgentSection({required this.state, required this.controller});
+
+  final SettingsState state;
+  final SettingsController controller;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final state = this.state;
+    final controller = this.controller;
+    // Fetch once the key status is known and a key is saved (ref.listen fires
+    // on state changes, after build — mutating a provider from a lifecycle
+    // method is not allowed). A failed load stays visible with its retry
+    // action; the guard excludes it.
+    ref.listen<SettingsState>(settingsControllerProvider, (previous, next) {
+      if (next.loaded &&
+          next.keySaved &&
+          next.agents.isEmpty &&
+          !next.agentLoading &&
+          !next.hasAgentError) {
+        unawaited(controller.loadAgents());
+      }
+    });
+    if (!state.keySaved) {
+      // The missing-key state is shown in the API key section above.
+      return const SizedBox.shrink();
+    }
+    final agents = state.agents;
+    // A stored selection missing from the fetched list falls back to the
+    // "None" row (the stored preference itself is kept; a send then fails
+    // with a retryable not-found error).
+    final selected = agents.any((a) => a.id == state.selectedAgentId)
+        ? state.selectedAgentId
+        : null;
+    final agentErrorKind =
+        state.hasAgentError ? classifyFailure(state.agentError) : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('Mistral agent', style: theme.textTheme.titleMedium),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Reload agents',
+              icon: const Icon(Icons.refresh),
+              onPressed: state.agentLoading
+                  ? null
+                  : () => controller.loadAgents(),
+            ),
+          ],
+        ),
+        Text(
+          'Used by "Send to agent" on a transcript. The agent runs with its '
+          'own tools; the call is billed per token under your API key.',
+          style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 8),
+        if (state.agentLoading && agents.isEmpty)
+          const LinearProgressIndicator(),
+        if (state.hasAgentError) ...[
+          const SizedBox(height: 8),
+          ErrorBanner(
+            kind: agentErrorKind!,
+            message: state.agentError,
+            onRemedy: agentErrorKind == FailureKind.noNetwork
+                ? () => controller.loadAgents()
+                : null,
+          ),
+        ],
+        if (agents.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          DropdownButton<String?>(
+            key: const Key('agentDropdown'),
+            value: selected,
+            isExpanded: true,
+            hint: const Text('No agent selected'),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('None'),
+              ),
+              for (final agent in agents)
+                DropdownMenuItem<String?>(
+                  value: agent.id,
+                  child: Text(
+                    agent.description == null || agent.description!.isEmpty
+                        ? agent.name
+                        : '${agent.name} — ${agent.description}',
+                  ),
+                ),
+            ],
+            onChanged: state.loaded
+                ? (value) => controller.selectAgent(value)
+                : null,
+          ),
+        ] else if (!state.agentLoading && !state.hasAgentError) ...[
+          Text(
+            'No agents found in your workspace. Create one in the Mistral '
+            'console first.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ],
+      ],
+    );
   }
 }
 

@@ -38,6 +38,8 @@ import 'fakes.dart';
 
 class MockKeyValidationClient extends Mock implements KeyValidationClient {}
 
+class MockAgentClient extends Mock implements AgentClient {}
+
 /// A [FakeUpdateCheckClient] whose fetch is gated on a completer, so a test
 /// can hold a manual check in flight.
 class GatedUpdateCheckClient extends FakeUpdateCheckClient {
@@ -53,6 +55,7 @@ class GatedUpdateCheckClient extends FakeUpdateCheckClient {
 void main() {
   late FakeApiKeyStore apiKeyStore;
   late MockKeyValidationClient validator;
+  late MockAgentClient agentClient;
   late InMemoryPreferencesRepository preferences;
 
   /// A release of [version] on GitHub (the pinned repo's release page).
@@ -78,6 +81,7 @@ void main() {
           apiKeyStoreProvider.overrideWith((ref) => apiKeyStore),
           keyValidationClientProvider.overrideWith((ref) => validator),
           preferencesRepositoryProvider.overrideWith((ref) => preferences),
+          agentClientProvider.overrideWith((ref) async => agentClient),
           updateCheckClientProvider.overrideWith(
             (ref) => updateCheckClient ?? FakeUpdateCheckClient(),
           ),
@@ -96,13 +100,30 @@ void main() {
   }
 
   /// Scrolls the settings list until the "Check for updates" button is on
-  /// screen (the Updates section sits below the API-key and preferences
-  /// sections). Fixed pumps only: with a session recording, the home screen's
-  /// recording indicator pulses forever, so pumpAndSettle would never return.
+  /// screen (the Updates section sits below the API-key, agent, and
+  /// preferences sections; the ListView builds lazily, so scroll until the
+  /// finder matches). Fixed pumps only: with a session recording, the home
+  /// screen's recording indicator pulses forever, so pumpAndSettle would
+  /// never return.
   Future<void> revealCheckButton(WidgetTester tester) async {
-    await tester.ensureVisible(find.text('Check for updates'));
+    await tester.scrollUntilVisible(
+      find.text('Check for updates'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
+  }
+
+  /// Scrolls the settings list until [finder] matches a built widget.
+  Future<void> reveal(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(
+      finder,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
   }
 
   /// Waits until the controller's initial load has completed.
@@ -113,8 +134,17 @@ void main() {
   setUp(() {
     apiKeyStore = FakeApiKeyStore();
     validator = MockKeyValidationClient();
+    agentClient = MockAgentClient();
     preferences = InMemoryPreferencesRepository();
     when(() => validator.validate(any())).thenAnswer((_) async {});
+    // Default: the agent list loads with two agents (tests override for the
+    // failure case).
+    when(() => agentClient.listAgents()).thenAnswer(
+      (_) async => const [
+        AgentInfo(id: 'ag_1', name: 'Summarizer', description: 'Summarizes'),
+        AgentInfo(id: 'ag_2', name: 'Note filer'),
+      ],
+    );
   });
 
   group('API key section (settings spec)', () {
@@ -361,6 +391,8 @@ void main() {
         appVersionReader: FakeAppVersionReader('1.2.0'),
       );
       await waitLoaded(tester);
+      // The agent section above makes the list taller — scroll to Updates.
+      await reveal(tester, find.text('Updates'));
 
       expect(find.text('Updates'), findsOneWidget);
       expect(find.text('VoxGale v1.2.0'), findsOneWidget);
@@ -525,6 +557,72 @@ void main() {
       );
       expect(find.text('Later'), findsOneWidget);
       expect(find.text('Open release'), findsOneWidget);
+    });
+  });
+
+  group('agent section (change 2026-10-29-send-transcript-to-agent, settings '
+      'spec delta)', () {
+    testWidgets('is hidden when no API key is saved', (tester) async {
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+
+      expect(find.text('Mistral agent'), findsNothing);
+      verifyNever(() => agentClient.listAgents());
+    });
+
+    testWidgets('fetches the agents and renders the picker with the stored '
+        'selection', (tester) async {
+      apiKeyStore.key = 'sk-secret';
+      preferences.stored = const StoredPreferences(agentId: 'ag_2');
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+
+      await reveal(tester, find.text('Note filer'));
+      expect(find.text('Mistral agent'), findsOneWidget);
+      expect(find.text('Note filer'), findsOneWidget);
+      verify(() => agentClient.listAgents()).called(1);
+    });
+
+    testWidgets('picking an agent persists it', (tester) async {
+      apiKeyStore.key = 'sk-secret';
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+
+      await reveal(tester, find.byKey(const Key('agentDropdown')));
+      await tester.tap(find.byKey(const Key('agentDropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Summarizer — Summarizes').last);
+      await tester.pumpAndSettle();
+
+      expect(preferences.stored.agentId, 'ag_1');
+    });
+
+    testWidgets('a failed list load shows the error banner and the retry '
+        'reloads', (tester) async {
+      apiKeyStore.key = 'sk-secret';
+      var calls = 0;
+      when(() => agentClient.listAgents()).thenAnswer((_) async {
+        calls++;
+        if (calls == 1) {
+          throw MistralApiException('Could not reach the agents API');
+        }
+        return const [AgentInfo(id: 'ag_1', name: 'Summarizer')];
+      });
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+
+      await reveal(tester, find.text('Could not reach the agents API'));
+      expect(find.text('Could not reach the agents API'), findsOneWidget);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(calls, 2);
+      // The reload succeeded: the picker is back and lists the fetched agent.
+      await reveal(tester, find.byKey(const Key('agentDropdown')));
+      await tester.tap(find.byKey(const Key('agentDropdown')));
+      await tester.pumpAndSettle();
+      expect(find.text('Summarizer'), findsOneWidget);
     });
   });
 }

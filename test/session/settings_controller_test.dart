@@ -8,6 +8,8 @@ import 'package:voxgale/storage/storage.dart';
 
 class MockKeyValidationClient extends Mock implements KeyValidationClient {}
 
+class MockAgentClient extends Mock implements AgentClient {}
+
 class FakeApiKeyStore implements ApiKeyStore {
   String? key;
 
@@ -35,6 +37,7 @@ class InMemoryPreferencesRepository implements PreferencesRepository {
 
 void main() {
   late MockKeyValidationClient validator;
+  late MockAgentClient agentClient;
   late FakeApiKeyStore apiKeyStore;
   late InMemoryPreferencesRepository preferences;
   late ProviderContainer container;
@@ -54,6 +57,7 @@ void main() {
 
   setUp(() {
     validator = MockKeyValidationClient();
+    agentClient = MockAgentClient();
     apiKeyStore = FakeApiKeyStore();
     preferences = InMemoryPreferencesRepository();
     container = ProviderContainer(
@@ -61,6 +65,7 @@ void main() {
         apiKeyStoreProvider.overrideWith((ref) => apiKeyStore),
         keyValidationClientProvider.overrideWith((ref) => validator),
         preferencesRepositoryProvider.overrideWith((ref) => preferences),
+        agentClientProvider.overrideWith((ref) async => agentClient),
       ],
     );
   });
@@ -250,6 +255,76 @@ void main() {
         (await container.read(preferencesProvider.future)).keepScreenOn,
         isFalse,
       );
+    });
+  });
+
+  group('agent picker (change 2026-10-29-send-transcript-to-agent, settings '
+      'spec delta)', () {
+    const agents = [
+      AgentInfo(id: 'ag_1', name: 'Summarizer', description: 'Summarizes'),
+      AgentInfo(id: 'ag_2', name: 'Note filer'),
+    ];
+
+    test('the initial load applies the stored agent id', () async {
+      preferences.stored = const StoredPreferences(agentId: 'ag_2');
+      controller();
+      await waitFor(() => state().loaded);
+
+      expect(state().selectedAgentId, 'ag_2');
+    });
+
+    test('loadAgents fetches the workspace agents into the state', () async {
+      apiKeyStore.key = 'sk-secret';
+      when(() => agentClient.listAgents()).thenAnswer((_) async => agents);
+      controller();
+      await waitFor(() => state().loaded);
+
+      await controller().loadAgents();
+
+      expect(state().agents, agents);
+      expect(state().agentLoading, isFalse);
+      expect(state().hasAgentError, isFalse);
+      verify(() => agentClient.listAgents()).called(1);
+    });
+
+    test('a failed list load sets the error and keeps the previous '
+        'selection', () async {
+      apiKeyStore.key = 'sk-secret';
+      preferences.stored = const StoredPreferences(agentId: 'ag_1');
+      when(() => agentClient.listAgents())
+          .thenThrow(MistralApiException('Could not reach the agents API'));
+      controller();
+      await waitFor(() => state().loaded);
+
+      await controller().loadAgents();
+
+      expect(state().hasAgentError, isTrue);
+      expect(state().agentError, 'Could not reach the agents API');
+      expect(state().agentLoading, isFalse);
+      expect(state().selectedAgentId, 'ag_1');
+      expect(state().agents, isEmpty);
+    });
+
+    test('selectAgent persists the choice and invalidates the cached '
+        'agent-id provider', () async {
+      apiKeyStore.key = 'sk-secret';
+      controller();
+      await waitFor(() => state().loaded);
+      // Cache the provider (Riverpod caches FutureProviders forever).
+      expect(await container.read(agentIdProvider.future), isNull);
+
+      await controller().selectAgent('ag_1');
+
+      expect(state().selectedAgentId, 'ag_1');
+      expect(preferences.stored.agentId, 'ag_1');
+      // Would be stale without the invalidation in _persistPreferences.
+      expect(await container.read(agentIdProvider.future), 'ag_1');
+
+      await controller().selectAgent(null);
+
+      expect(state().selectedAgentId, isNull);
+      expect(preferences.stored.agentId, isNull);
+      expect(await container.read(agentIdProvider.future), isNull);
     });
   });
 }
