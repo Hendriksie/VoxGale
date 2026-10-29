@@ -6,6 +6,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v1.4.0] - 2026-10-29
+
+### Added
+
+- Settings gains a "Keep screen on during sessions" toggle: while on, the
+  display stays on for the whole live session (released when the session
+  ends). Off by default; capture with the screen off is unchanged.
+
 ## [v1.3.0] - 2026-10-29
 
 ### Added

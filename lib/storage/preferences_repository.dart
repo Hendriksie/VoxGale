@@ -1,8 +1,9 @@
 // Persistence for the user's transcription preferences (design P2-D3): the
-// default batch model and the language hint, stored in the Drift database's
-// single-row `preferences` table. Behind an interface so the UI layer stays
-// storage-agnostic and mockable. Null fields mean "unset" — the readers
-// apply the defaults (the pinned batch Mini model, automatic detection).
+// default batch model, the language hint, and the keep-screen-on toggle,
+// stored in the Drift database's single-row `preferences` table. Behind an
+// interface so the UI layer stays storage-agnostic and mockable. Null
+// columns mean "unset" — the readers apply the defaults (the pinned batch
+// Mini model, automatic detection, screen wake lock off).
 
 import 'package:drift/drift.dart';
 
@@ -10,7 +11,11 @@ import 'app_database.dart';
 
 /// The user's persisted transcription preferences (design P2-D3).
 class StoredPreferences {
-  const StoredPreferences({this.defaultBatchModel, this.languageHint});
+  const StoredPreferences({
+    this.defaultBatchModel,
+    this.languageHint,
+    this.keepScreenOn = false,
+  });
 
   /// Default batch model id (Mini or Small Transcribe 3), or null for the
   /// pinned Mini default.
@@ -19,15 +24,21 @@ class StoredPreferences {
   /// ISO 639-1 language hint, or null for automatic detection.
   final String? languageHint;
 
+  /// Whether the display stays on during live sessions (change
+  /// 2026-10-29-keep-screen-on-during-sessions); the stored null reads as
+  /// false (off).
+  final bool keepScreenOn;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is StoredPreferences &&
           defaultBatchModel == other.defaultBatchModel &&
-          languageHint == other.languageHint;
+          languageHint == other.languageHint &&
+          keepScreenOn == other.keepScreenOn;
 
   @override
-  int get hashCode => Object.hash(defaultBatchModel, languageHint);
+  int get hashCode => Object.hash(defaultBatchModel, languageHint, keepScreenOn);
 }
 
 /// Persistence for the user's transcription preferences (design P2-D3).
@@ -56,6 +67,7 @@ class DriftPreferencesRepository implements PreferencesRepository {
     return StoredPreferences(
       defaultBatchModel: row?.defaultBatchModel,
       languageHint: row?.languageHint,
+      keepScreenOn: row?.keepScreenOn ?? false,
     );
   }
 
@@ -66,6 +78,7 @@ class DriftPreferencesRepository implements PreferencesRepository {
             id: rowId,
             defaultBatchModel: Value(preferences.defaultBatchModel),
             languageHint: Value(preferences.languageHint),
+            keepScreenOn: Value(preferences.keepScreenOn),
           ),
         );
   }

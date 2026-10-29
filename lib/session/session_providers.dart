@@ -17,6 +17,7 @@ import 'file_transcription_controller.dart';
 import 'history_detail_controller.dart';
 import 'history_search_query.dart';
 import 'live_session_controller.dart';
+import 'screen_wake_gateway.dart';
 import 'settings_controller.dart';
 
 /// Pinned model IDs and rates (single source, design D3/D7).
@@ -128,6 +129,13 @@ final foregroundTaskGatewayProvider =
 /// (live-transcription spec "Respect audio focus").
 final audioFocusGatewayProvider =
     Provider<AudioFocusGateway>((ref) => AudioSessionFocusGateway());
+
+/// The screen-wake gateway behind the live session controller (change
+/// 2026-10-29-keep-screen-on-during-sessions, design decision 1): holds or
+/// releases the screen wake lock (FLAG_KEEP_SCREEN_ON) while a live session
+/// runs, when the user enabled "Keep screen on during sessions" in settings.
+final screenWakeGatewayProvider =
+    Provider<ScreenWakeGateway>((ref) => WakelockPlusScreenWakeGateway());
 
 /// The clock driving the elapsed-time display.
 final sessionClockProvider =

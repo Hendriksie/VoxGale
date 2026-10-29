@@ -92,6 +92,7 @@ void main() {
       preferences.stored = const StoredPreferences(
         defaultBatchModel: 'voxtral-small-transcribe-3-0',
         languageHint: 'de',
+        keepScreenOn: true,
       );
 
       controller();
@@ -99,6 +100,14 @@ void main() {
 
       expect(state().defaultBatchModel, 'voxtral-small-transcribe-3-0');
       expect(state().languageHint, 'de');
+      expect(state().keepScreenOn, isTrue);
+    });
+
+    test('keep screen on defaults to off when nothing is stored', () async {
+      controller();
+      await waitFor(() => state().loaded);
+
+      expect(state().keepScreenOn, isFalse);
     });
   });
 
@@ -210,6 +219,37 @@ void main() {
 
       expect(preferences.stored.languageHint, isNull);
       expect(state().languageHint, isNull);
+    });
+
+    test('toggling keep screen on persists it and invalidates the '
+        'cached preferences provider', () async {
+      controller();
+      await waitFor(() => state().loaded);
+      // Read the provider so its result is cached (Riverpod caches
+      // FutureProviders forever — project gotcha).
+      expect(
+        (await container.read(preferencesProvider.future)).keepScreenOn,
+        isFalse,
+      );
+
+      await controller().setKeepScreenOn(true);
+
+      expect(state().keepScreenOn, isTrue);
+      expect(preferences.stored.keepScreenOn, isTrue);
+      // Would be stale without the invalidation in _persistPreferences.
+      expect(
+        (await container.read(preferencesProvider.future)).keepScreenOn,
+        isTrue,
+      );
+
+      await controller().setKeepScreenOn(false);
+
+      expect(state().keepScreenOn, isFalse);
+      expect(preferences.stored.keepScreenOn, isFalse);
+      expect(
+        (await container.read(preferencesProvider.future)).keepScreenOn,
+        isFalse,
+      );
     });
   });
 }

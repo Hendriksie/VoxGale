@@ -217,8 +217,10 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   }
 }
 
-/// The transcription preferences section: the default batch model and the
-/// language hint, bound to the persisted preferences (settings spec).
+/// The transcription preferences section: the default batch model, the
+/// language hint, and the keep-screen-on toggle (change
+/// 2026-10-29-keep-screen-on-during-sessions), bound to the persisted
+/// preferences (settings spec).
 class _PreferencesSection extends StatelessWidget {
   const _PreferencesSection({
     required this.state,
@@ -279,6 +281,16 @@ class _PreferencesSection extends StatelessWidget {
           onChanged: state.loaded
               ? (value) => controller.setLanguageHint(value)
               : null,
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          value: state.keepScreenOn,
+          onChanged: state.loaded
+              ? (value) => controller.setKeepScreenOn(value)
+              : null,
+          title: const Text('Keep screen on during sessions'),
+          subtitle: const Text('Uses more battery while a session runs'),
+          contentPadding: EdgeInsets.zero,
         ),
       ],
     );

@@ -9,6 +9,7 @@ import 'package:voxgale/mistral/mistral.dart';
 import 'package:voxgale/session/audio_focus_gateway.dart';
 import 'package:voxgale/session/capture_service.dart';
 import 'package:voxgale/session/live_session_controller.dart';
+import 'package:voxgale/session/screen_wake_gateway.dart';
 import 'package:voxgale/session/session_models.dart';
 import 'package:voxgale/session/session_providers.dart';
 import 'package:voxgale/storage/storage.dart';
@@ -104,6 +105,25 @@ class FakeAudioFocusGateway implements AudioFocusGateway {
   Future<void> dispose() => focusController.close();
 }
 
+/// A fake [ScreenWakeGateway] (change
+/// 2026-10-29-keep-screen-on-during-sessions): records the requested screen
+/// wake lock states and can be told to throw, simulating a platform failure.
+class FakeScreenWakeGateway implements ScreenWakeGateway {
+  /// The requested states, in call order.
+  final List<bool> calls = [];
+
+  /// When true, [setScreenOn] throws — simulates a platform failure.
+  bool throwOnSet = false;
+
+  @override
+  Future<void> setScreenOn(bool on) async {
+    if (throwOnSet) {
+      throw StateError('screen wake failure (test)');
+    }
+    calls.add(on);
+  }
+}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(RealtimeSessionConfig());
@@ -136,6 +156,8 @@ void main() {
   late FakeApiKeyStore apiKeyStore;
   late FakeSessionClock clock;
   late FakeAudioFocusGateway audioFocus;
+  late FakeScreenWakeGateway screenWake;
+  late InMemoryPreferencesRepository preferences;
   late StreamController<SessionEvent> eventController;
   late ProviderContainer container;
   late Directory tempDir;
@@ -294,6 +316,8 @@ void main() {
     apiKeyStore = FakeApiKeyStore()..key = 'test-key';
     clock = FakeSessionClock();
     audioFocus = FakeAudioFocusGateway();
+    screenWake = FakeScreenWakeGateway();
+    preferences = InMemoryPreferencesRepository();
     startSessionAnswer = () async => null;
     // Sync: events are delivered to the controller's listener immediately.
     eventController = StreamController<SessionEvent>.broadcast(sync: true);
@@ -304,14 +328,14 @@ void main() {
         sessionRepositoryProvider.overrideWith((ref) => repository),
         // The diarization pass provider resolves the default batch model
         // through the preferences chain (design P2-D7) — keep it in memory.
-        preferencesRepositoryProvider.overrideWith(
-            (ref) => InMemoryPreferencesRepository()),
+        preferencesRepositoryProvider.overrideWith((ref) => preferences),
         mistralConfigProvider.overrideWith((ref) => MistralConfig.defaults),
         apiKeyStoreProvider.overrideWith((ref) => apiKeyStore),
         batchTranscriptionClientProvider.overrideWith((ref) async => batchClient),
         sessionClockProvider.overrideWith((ref) => clock),
         foregroundTaskGatewayProvider.overrideWith((ref) => gateway),
         audioFocusGatewayProvider.overrideWith((ref) => audioFocus),
+        screenWakeGatewayProvider.overrideWith((ref) => screenWake),
         sessionFinalizeTimeoutProvider.overrideWith(
           (ref) => const Duration(milliseconds: 100),
         ),
@@ -1259,6 +1283,53 @@ void main() {
       );
       expect(states.last.single.status, SessionStatus.finalized);
       expect(await File(audioPath).exists(), isFalse);
+    });
+  });
+
+  group('screen wake lock (2026-10-29-keep-screen-on-during-sessions)', () {
+    test('is held while a session runs when the preference is on', () async {
+      preferences.stored = const StoredPreferences(keepScreenOn: true);
+      await startActiveSession();
+      expect(screenWake.calls, [true]);
+    });
+
+    test('is not held when the preference is off (the default)', () async {
+      await startActiveSession();
+      expect(screenWake.calls, isEmpty);
+    });
+
+    test('is held through pause and resume', () async {
+      preferences.stored = const StoredPreferences(keepScreenOn: true);
+      await startActiveSession();
+      await controller().pause();
+      await controller().resume();
+      expect(screenWake.calls, [true]);
+    });
+
+    test('is released when the session stops', () async {
+      preferences.stored = const StoredPreferences(keepScreenOn: true);
+      await startActiveSession();
+      await finalizeToPassOffered();
+      expect(screenWake.calls, [true, false]);
+    });
+
+    test('is not touched when the session fails to start', () async {
+      preferences.stored = const StoredPreferences(keepScreenOn: true);
+      startSessionAnswer = () async => MicPermissionDenied();
+      stubServiceStart();
+      await controller().start();
+      expect(state().phase, LiveSessionPhase.error);
+      expect(screenWake.calls, isEmpty);
+    });
+
+    test('a gateway failure never fails the session', () async {
+      preferences.stored = const StoredPreferences(keepScreenOn: true);
+      screenWake.throwOnSet = true;
+      await startActiveSession();
+      expect(state().phase, LiveSessionPhase.active);
+      // The release in teardown is swallowed the same way.
+      await finalizeToPassOffered();
+      expect(state().phase, LiveSessionPhase.passOffered);
     });
   });
 }

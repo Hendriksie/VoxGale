@@ -1192,8 +1192,27 @@ class $PreferencesTable extends Preferences
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _keepScreenOnMeta = const VerificationMeta(
+    'keepScreenOn',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, defaultBatchModel, languageHint];
+  late final GeneratedColumn<bool> keepScreenOn = GeneratedColumn<bool>(
+    'keep_screen_on',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("keep_screen_on" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    defaultBatchModel,
+    languageHint,
+    keepScreenOn,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1229,6 +1248,15 @@ class $PreferencesTable extends Preferences
         ),
       );
     }
+    if (data.containsKey('keep_screen_on')) {
+      context.handle(
+        _keepScreenOnMeta,
+        keepScreenOn.isAcceptableOrUnknown(
+          data['keep_screen_on']!,
+          _keepScreenOnMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1250,6 +1278,10 @@ class $PreferencesTable extends Preferences
         DriftSqlType.string,
         data['${effectivePrefix}language_hint'],
       ),
+      keepScreenOn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}keep_screen_on'],
+      ),
     );
   }
 
@@ -1269,10 +1301,15 @@ class Preference extends DataClass implements Insertable<Preference> {
 
   /// ISO 639-1 language hint, or null for automatic detection.
   final String? languageHint;
+
+  /// Whether the display stays on during live sessions (change
+  /// 2026-10-29-keep-screen-on-during-sessions), or null for off.
+  final bool? keepScreenOn;
   const Preference({
     required this.id,
     this.defaultBatchModel,
     this.languageHint,
+    this.keepScreenOn,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1283,6 +1320,9 @@ class Preference extends DataClass implements Insertable<Preference> {
     }
     if (!nullToAbsent || languageHint != null) {
       map['language_hint'] = Variable<String>(languageHint);
+    }
+    if (!nullToAbsent || keepScreenOn != null) {
+      map['keep_screen_on'] = Variable<bool>(keepScreenOn);
     }
     return map;
   }
@@ -1296,6 +1336,9 @@ class Preference extends DataClass implements Insertable<Preference> {
       languageHint: languageHint == null && nullToAbsent
           ? const Value.absent()
           : Value(languageHint),
+      keepScreenOn: keepScreenOn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(keepScreenOn),
     );
   }
 
@@ -1310,6 +1353,7 @@ class Preference extends DataClass implements Insertable<Preference> {
         json['defaultBatchModel'],
       ),
       languageHint: serializer.fromJson<String?>(json['languageHint']),
+      keepScreenOn: serializer.fromJson<bool?>(json['keepScreenOn']),
     );
   }
   @override
@@ -1319,6 +1363,7 @@ class Preference extends DataClass implements Insertable<Preference> {
       'id': serializer.toJson<String>(id),
       'defaultBatchModel': serializer.toJson<String?>(defaultBatchModel),
       'languageHint': serializer.toJson<String?>(languageHint),
+      'keepScreenOn': serializer.toJson<bool?>(keepScreenOn),
     };
   }
 
@@ -1326,12 +1371,14 @@ class Preference extends DataClass implements Insertable<Preference> {
     String? id,
     Value<String?> defaultBatchModel = const Value.absent(),
     Value<String?> languageHint = const Value.absent(),
+    Value<bool?> keepScreenOn = const Value.absent(),
   }) => Preference(
     id: id ?? this.id,
     defaultBatchModel: defaultBatchModel.present
         ? defaultBatchModel.value
         : this.defaultBatchModel,
     languageHint: languageHint.present ? languageHint.value : this.languageHint,
+    keepScreenOn: keepScreenOn.present ? keepScreenOn.value : this.keepScreenOn,
   );
   Preference copyWithCompanion(PreferencesCompanion data) {
     return Preference(
@@ -1342,6 +1389,9 @@ class Preference extends DataClass implements Insertable<Preference> {
       languageHint: data.languageHint.present
           ? data.languageHint.value
           : this.languageHint,
+      keepScreenOn: data.keepScreenOn.present
+          ? data.keepScreenOn.value
+          : this.keepScreenOn,
     );
   }
 
@@ -1350,49 +1400,57 @@ class Preference extends DataClass implements Insertable<Preference> {
     return (StringBuffer('Preference(')
           ..write('id: $id, ')
           ..write('defaultBatchModel: $defaultBatchModel, ')
-          ..write('languageHint: $languageHint')
+          ..write('languageHint: $languageHint, ')
+          ..write('keepScreenOn: $keepScreenOn')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, defaultBatchModel, languageHint);
+  int get hashCode =>
+      Object.hash(id, defaultBatchModel, languageHint, keepScreenOn);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Preference &&
           other.id == this.id &&
           other.defaultBatchModel == this.defaultBatchModel &&
-          other.languageHint == this.languageHint);
+          other.languageHint == this.languageHint &&
+          other.keepScreenOn == this.keepScreenOn);
 }
 
 class PreferencesCompanion extends UpdateCompanion<Preference> {
   final Value<String> id;
   final Value<String?> defaultBatchModel;
   final Value<String?> languageHint;
+  final Value<bool?> keepScreenOn;
   final Value<int> rowid;
   const PreferencesCompanion({
     this.id = const Value.absent(),
     this.defaultBatchModel = const Value.absent(),
     this.languageHint = const Value.absent(),
+    this.keepScreenOn = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PreferencesCompanion.insert({
     required String id,
     this.defaultBatchModel = const Value.absent(),
     this.languageHint = const Value.absent(),
+    this.keepScreenOn = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id);
   static Insertable<Preference> custom({
     Expression<String>? id,
     Expression<String>? defaultBatchModel,
     Expression<String>? languageHint,
+    Expression<bool>? keepScreenOn,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (defaultBatchModel != null) 'default_batch_model': defaultBatchModel,
       if (languageHint != null) 'language_hint': languageHint,
+      if (keepScreenOn != null) 'keep_screen_on': keepScreenOn,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1401,12 +1459,14 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
     Value<String>? id,
     Value<String?>? defaultBatchModel,
     Value<String?>? languageHint,
+    Value<bool?>? keepScreenOn,
     Value<int>? rowid,
   }) {
     return PreferencesCompanion(
       id: id ?? this.id,
       defaultBatchModel: defaultBatchModel ?? this.defaultBatchModel,
       languageHint: languageHint ?? this.languageHint,
+      keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1423,6 +1483,9 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
     if (languageHint.present) {
       map['language_hint'] = Variable<String>(languageHint.value);
     }
+    if (keepScreenOn.present) {
+      map['keep_screen_on'] = Variable<bool>(keepScreenOn.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1435,6 +1498,7 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
           ..write('id: $id, ')
           ..write('defaultBatchModel: $defaultBatchModel, ')
           ..write('languageHint: $languageHint, ')
+          ..write('keepScreenOn: $keepScreenOn, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2530,6 +2594,7 @@ typedef $$PreferencesTableCreateCompanionBuilder =
       required String id,
       Value<String?> defaultBatchModel,
       Value<String?> languageHint,
+      Value<bool?> keepScreenOn,
       Value<int> rowid,
     });
 typedef $$PreferencesTableUpdateCompanionBuilder =
@@ -2537,6 +2602,7 @@ typedef $$PreferencesTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String?> defaultBatchModel,
       Value<String?> languageHint,
+      Value<bool?> keepScreenOn,
       Value<int> rowid,
     });
 
@@ -2561,6 +2627,11 @@ class $$PreferencesTableFilterComposer
 
   ColumnFilters<String> get languageHint => $composableBuilder(
     column: $table.languageHint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get keepScreenOn => $composableBuilder(
+    column: $table.keepScreenOn,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2588,6 +2659,11 @@ class $$PreferencesTableOrderingComposer
     column: $table.languageHint,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get keepScreenOn => $composableBuilder(
+    column: $table.keepScreenOn,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PreferencesTableAnnotationComposer
@@ -2609,6 +2685,11 @@ class $$PreferencesTableAnnotationComposer
 
   GeneratedColumn<String> get languageHint => $composableBuilder(
     column: $table.languageHint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get keepScreenOn => $composableBuilder(
+    column: $table.keepScreenOn,
     builder: (column) => column,
   );
 }
@@ -2647,11 +2728,13 @@ class $$PreferencesTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String?> defaultBatchModel = const Value.absent(),
                 Value<String?> languageHint = const Value.absent(),
+                Value<bool?> keepScreenOn = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PreferencesCompanion(
                 id: id,
                 defaultBatchModel: defaultBatchModel,
                 languageHint: languageHint,
+                keepScreenOn: keepScreenOn,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2659,11 +2742,13 @@ class $$PreferencesTableTableManager
                 required String id,
                 Value<String?> defaultBatchModel = const Value.absent(),
                 Value<String?> languageHint = const Value.absent(),
+                Value<bool?> keepScreenOn = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PreferencesCompanion.insert(
                 id: id,
                 defaultBatchModel: defaultBatchModel,
                 languageHint: languageHint,
+                keepScreenOn: keepScreenOn,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

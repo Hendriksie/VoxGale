@@ -323,6 +323,35 @@ void main() {
 
       expect(find.text('German'), findsOneWidget);
     });
+
+    testWidgets('the keep-screen-on toggle defaults to off and persists a '
+        'toggle (change 2026-10-29-keep-screen-on-during-sessions)',
+        (tester) async {
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+
+      final toggle = find.byType(SwitchListTile);
+      expect(find.text('Keep screen on during sessions'), findsOneWidget);
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      expect(preferences.stored.keepScreenOn, isTrue);
+    });
+
+    testWidgets('the stored keep-screen-on preference is shown on load',
+        (tester) async {
+      preferences.stored = const StoredPreferences(keepScreenOn: true);
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isTrue,
+      );
+    });
   });
 
   group('updates section (update-tracker spec, tasks 6.3-6.4)', () {

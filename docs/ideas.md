@@ -47,12 +47,13 @@ historical v1 plan lives at [project-plan.md](project-plan.md).
   package installer always requires user confirmation for sideloaded
   APKs), full vs delta APK, signature verification of the downloaded
   artifact.
-- **Keep the screen on during sessions** — a Settings toggle that
-  disables auto screen-off while a live session is recording (the app
-  already holds a partial wake lock for the CPU screen-off; this would
-  keep the display awake too). Open questions: scope (live sessions only
-  vs any screen), battery impact, interaction with the existing
-  wake-lock path.
+- **Keep the screen on during sessions** — promoted (change
+  `2026-10-29-keep-screen-on-during-sessions`): a Settings toggle (off by
+  default) that holds the screen wake lock (`FLAG_KEEP_SCREEN_ON` via
+  `wakelock_plus`) for the whole live session, including pauses, released
+  on stop/error. Scope settled as live sessions only; the existing partial
+  wake lock for background capture is untouched. Still parked: a dimmed
+  keep-screen-on mode (the toggle keeps the current brightness).
 
 ## Add yours
 

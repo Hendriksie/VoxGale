@@ -24,6 +24,7 @@ class SettingsState {
     this.info = '',
     this.defaultBatchModel,
     this.languageHint,
+    this.keepScreenOn = false,
   });
 
   /// Whether the initial load (key presence + preferences) has completed.
@@ -47,6 +48,10 @@ class SettingsState {
   /// The pinned language hint, or null for automatic detection.
   final String? languageHint;
 
+  /// Whether the display stays on during live sessions (change
+  /// 2026-10-29-keep-screen-on-during-sessions); off by default.
+  final bool keepScreenOn;
+
   /// Whether [error] carries a message.
   bool get hasError => error.isNotEmpty;
 
@@ -62,6 +67,7 @@ class SettingsState {
     String? info,
     Object? defaultBatchModel = _keep,
     Object? languageHint = _keep,
+    bool? keepScreenOn,
   }) =>
       SettingsState(
         loaded: loaded ?? this.loaded,
@@ -75,6 +81,7 @@ class SettingsState {
         languageHint: languageHint == _keep
             ? this.languageHint
             : languageHint as String?,
+        keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       );
 
   @override
@@ -87,7 +94,8 @@ class SettingsState {
           error == other.error &&
           info == other.info &&
           defaultBatchModel == other.defaultBatchModel &&
-          languageHint == other.languageHint;
+          languageHint == other.languageHint &&
+          keepScreenOn == other.keepScreenOn;
 
   @override
   int get hashCode => Object.hash(
@@ -98,6 +106,7 @@ class SettingsState {
         info,
         defaultBatchModel,
         languageHint,
+        keepScreenOn,
       );
 }
 
@@ -123,6 +132,7 @@ class SettingsController extends Notifier<SettingsState> {
       keySaved: key != null && key.isNotEmpty,
       defaultBatchModel: preferences.defaultBatchModel,
       languageHint: preferences.languageHint,
+      keepScreenOn: preferences.keepScreenOn,
     );
   }
 
@@ -187,11 +197,20 @@ class SettingsController extends Notifier<SettingsState> {
     await _persistPreferences();
   }
 
+  /// Sets the keep-screen-on toggle and persists it (change
+  /// 2026-10-29-keep-screen-on-during-sessions): while on, the display stays
+  /// on for the whole live session.
+  Future<void> setKeepScreenOn(bool on) async {
+    state = state.copyWith(keepScreenOn: on, info: '');
+    await _persistPreferences();
+  }
+
   Future<void> _persistPreferences() async {
     await ref.read(preferencesRepositoryProvider).savePreferences(
           StoredPreferences(
             defaultBatchModel: state.defaultBatchModel,
             languageHint: state.languageHint,
+            keepScreenOn: state.keepScreenOn,
           ),
         );
     ref.invalidate(preferencesProvider);

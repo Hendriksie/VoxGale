@@ -385,6 +385,8 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       // (the session-end teardown normally already released it).
       unawaited(_audioFocusGateway?.release());
       _audioFocusGateway = null;
+      // Same for the screen wake lock held while a session runs.
+      unawaited(_releaseScreenWake());
     });
     // The key's presence only — the key itself is read inside the service
     // isolate and inside the lib/mistral/ clients, never here. Tracked
@@ -432,6 +434,11 @@ class LiveSessionController extends Notifier<LiveSessionState> {
   AudioFocusGateway? _audioFocusGateway;
   Completer<void>? _sessionEnded;
   DateTime? _startedAt;
+
+  /// Whether the screen wake lock is currently held for the running session
+  /// (change 2026-10-29-keep-screen-on-during-sessions) — tracked so the
+  /// release in teardown only fires when a hold actually happened.
+  bool _screenWakeOn = false;
 
   /// When the current pause began — the elapsed clock freezes while paused
   /// (design PS-D2): the paused duration is excluded from the session time.
@@ -550,6 +557,10 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     // The session is capturing: configure the platform audio session for
     // recording and listen for focus changes (design P3-D2).
     await _startAudioFocusHandling();
+    // Keep the display on for the whole session when the user enabled it
+    // (change 2026-10-29-keep-screen-on-during-sessions); released in
+    // [_teardown]. Held through pauses — a paused session is still running.
+    await _enableScreenWakeIfPreferred();
   }
 
   /// Pauses capture and transcription; the realtime session stays open
@@ -1069,6 +1080,37 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     return const [];
   }
 
+  // -- Screen wake (change 2026-10-29-keep-screen-on-during-sessions) --------
+
+  /// Holds the screen wake lock when the persisted "Keep screen on during
+  /// sessions" preference is on. Called when the session becomes active.
+  /// Best-effort: a screen-wake failure never fails the session.
+  Future<void> _enableScreenWakeIfPreferred() async {
+    final preferences = await ref.read(preferencesProvider.future);
+    if (!preferences.keepScreenOn || _screenWakeOn) {
+      return;
+    }
+    _screenWakeOn = true;
+    try {
+      await ref.read(screenWakeGatewayProvider).setScreenOn(true);
+    } catch (_) {
+      // Best-effort: the display simply times out normally.
+    }
+  }
+
+  /// Releases the screen wake lock if it is held. Best-effort, idempotent.
+  Future<void> _releaseScreenWake() async {
+    if (!_screenWakeOn) {
+      return;
+    }
+    _screenWakeOn = false;
+    try {
+      await ref.read(screenWakeGatewayProvider).setScreenOn(false);
+    } catch (_) {
+      // Best-effort: the window flag dies with the process anyway.
+    }
+  }
+
   // -- Teardown ----------------------------------------------------------------
 
   Future<void> _teardown() async {
@@ -1077,6 +1119,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     await _tickSub?.cancel();
     _tickSub = null;
     await _stopAudioFocusHandling();
+    await _releaseScreenWake();
     _sessionEnded = null;
     _startedAt = null;
     _audioPath = null;

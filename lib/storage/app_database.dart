@@ -86,8 +86,9 @@ class Segments extends Table {
 }
 
 /// The user's persisted transcription preferences (design P2-D3): a single
-/// row (id `default`) holding the default batch model and the language
-/// hint. Null columns mean "unset" — the readers apply the defaults.
+/// row (id `default`) holding the default batch model, the language hint,
+/// and the keep-screen-on toggle. Null columns mean "unset" — the readers
+/// apply the defaults.
 class Preferences extends Table {
   /// Always `default` — the table holds exactly one row.
   TextColumn get id => text()();
@@ -98,6 +99,10 @@ class Preferences extends Table {
 
   /// ISO 639-1 language hint, or null for automatic detection.
   TextColumn get languageHint => text().nullable()();
+
+  /// Whether the display stays on during live sessions (change
+  /// 2026-10-29-keep-screen-on-during-sessions), or null for off.
+  BoolColumn get keepScreenOn => boolean().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -141,7 +146,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.file(File file) : super(NativeDatabase(file));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -157,6 +162,12 @@ class AppDatabase extends _$AppDatabase {
             // Update tracker (change 2026-10-29-update-tracker, design
             // decision 6): the single-row update_state table is new.
             await migrator.createTable(updateState);
+          }
+          if (from < 4) {
+            // Keep screen on (change 2026-10-29-keep-screen-on-during-sessions,
+            // design decision 5): the preferences row learns the
+            // keep_screen_on toggle; existing rows read as null → off.
+            await migrator.addColumn(preferences, preferences.keepScreenOn);
           }
         },
       );

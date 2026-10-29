@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.3.0+4
+version: 1.4.0+5
 
 environment:
   sdk: ^3.13.5
@@ -67,6 +67,12 @@ dependencies:
   # Opens the GitHub release page in the device browser — share_plus only
   # shares content.
   url_launcher: ^6.3.3
+  # Keeps the display on during a live session when the user enables the
+  # "Keep screen on during sessions" toggle (change
+  # 2026-10-29-keep-screen-on-during-sessions) — flutter_foreground_task's
+  # allowWakeLock only holds the partial CPU wake lock; no existing
+  # dependency sets FLAG_KEEP_SCREEN_ON on the activity window.
+  wakelock_plus: ^1.8.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
