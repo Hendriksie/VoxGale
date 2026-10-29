@@ -6,6 +6,8 @@
 /// stays mockable and survives model-ID churn.
 library;
 
+export 'agent/agent_client.dart';
+export 'agent/dio_agent_client.dart';
 export 'api_key_store.dart';
 export 'batch/batch_transcription_client.dart';
 export 'batch/dio_batch_transcription_client.dart';

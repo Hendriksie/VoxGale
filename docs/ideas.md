@@ -10,7 +10,29 @@ historical v1 plan lives at [project-plan.md](project-plan.md).
 - **Mistral agent integration** — after a session, let the user send the
   transcript to a Mistral agent they've configured (summarize, extract
   action items, file notes). Keep the data model export-friendly so this is
-  a drop-in feature.
+  a drop-in feature. Researched 2026-10-29 against docs.mistral.ai: the
+  same user API key authenticates the Agents/Conversations API on
+  `api.mistral.ai` — `GET /v1/agents` lists the workspace's agents and
+  `POST /v1/conversations` with `{agent_id, inputs, stream: false,
+  store: false}` runs a one-shot agent call and returns the assistant
+  message plus token usage. Integration points: a new `lib/mistral/agent/`
+  client behind an interface (API key read from `ApiKeyStore` at provider
+  construction, exactly like the batch client), the agent ID as a
+  non-secret `StoredPreferences` field in Settings, and a "Send to agent"
+  action on the history detail screen reusing the export builders for the
+  payload. Caveats found in the docs: agent calls are token-priced, not
+  per-minute audio, so the cost-indicator rates don't apply (the response
+  carries token usage instead); Agents/Conversations are stateful and
+  explicitly outside Mistral's zero-data-retention coverage, so always
+  send with `store: false` and state the flow in PRIVACY.md; an agent with
+  tools (web search, connectors, libraries) may forward transcript content
+  to those tools — that is the user's own agent configuration, worth a UI
+  note. Decided 2026-10-29: the agent is chosen with a picker populated
+  from `GET /v1/agents` (agent names shown, chosen ID stored), not a
+  free-text field. Open questions before proposing: persist the agent's
+  reply per session or display/share-only, transcript length vs the agent
+  model's context window, and a manual on-device spike of
+  `POST /v1/conversations` with the real key (never from tests).
 - **Automatic speaker naming** — batch diarization yields "Speaker 1 /
   Speaker 2" segments; let users rename speakers once, store a local
   speaker profile, and map known voices to names in future captures.
