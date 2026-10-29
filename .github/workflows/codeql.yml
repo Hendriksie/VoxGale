@@ -56,7 +56,7 @@ jobs:
           - language: actions
             build-mode: none
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # The steps below only serve the manual java-kotlin build; the
       # actions analysis needs none of them.
