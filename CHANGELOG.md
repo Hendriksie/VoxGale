@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v1.3.0] - 2026-10-29
+
 ### Added
 
 - In-app update tracker: the app checks GitHub Releases for a newer
