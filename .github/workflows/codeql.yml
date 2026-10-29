@@ -1,0 +1,124 @@
+name: CodeQL
+
+# Code scanning for the compiled languages in this repository
+# (java-kotlin for the Android shell, actions for the workflows).
+#
+# This is an ADVANCED setup workflow with a MANUAL build for java-kotlin.
+# The settings-managed default setup cannot express build steps, and its
+# autobuild fails for this project (reproduced 2026-10-29): a fresh
+# checkout has no android/gradlew and no android/local.properties (both
+# gitignored), and settings.gradle.kts requires local.properties with a
+# flutter.sdk entry plus the Flutter SDK itself — none of which CodeQL's
+# autobuilder sets up. The build steps below are copied from release.yml
+# so the analysis builds exactly like a release build (debug flavor: no
+# signing key needed).
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: '30 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Keep in lockstep with release.yml.
+  FLUTTER_VERSION: '3.47.8'
+  ANDROID_SDK_ROOT: /home/runner/android-sdk
+  ANDROID_HOME: /home/runner/android-sdk
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    # Pinned (not ubuntu-latest): the label migrates, and the analysis
+    # build should not move under us (same reasoning as release.yml).
+    runs-on: ubuntu-24.04
+    permissions:
+      # required for all workflows
+      security-events: write
+      # only required for workflows in private repositories
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The Android Gradle build needs Flutter + Android SDK + JDK 17;
+          # build it manually between init and analyze so CodeQL traces it.
+          - language: java-kotlin
+            build-mode: manual
+          # GitHub Actions workflows: no build needed.
+          - language: actions
+            build-mode: none
+    steps:
+      - uses: actions/checkout@v6
+
+      # The steps below only serve the manual java-kotlin build; the
+      # actions analysis needs none of them.
+      - uses: actions/setup-java@v5
+        if: matrix.build-mode == 'manual'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Pinned Flutter SDK from the official release archive. Extracted to
+      # $HOME — NOT into the workspace: an SDK extracted inside the
+      # checkout would pollute the analysis source root (same reasoning as
+      # release.yml). The tarball is deleted right after extraction —
+      # GitHub runners have limited free disk and the build ran out of
+      # space once.
+      - name: Set up Flutter
+        if: matrix.build-mode == 'manual'
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/flutter.tar.xz" \
+            "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          tar -xf "$RUNNER_TEMP/flutter.tar.xz" -C "$HOME"
+          rm -f "$RUNNER_TEMP/flutter.tar.xz"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+
+      # The Android SDK the build runs against (compileSdk 36 / build-tools
+      # 36.0.0; AGP auto-downloads the NDK flutter.ndkVersion pins; CMake
+      # comes with the runner image).
+      - name: Set up the Android SDK
+        if: matrix.build-mode == 'manual'
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          curl -fsSL -o "$RUNNER_TEMP/cmdtools.zip" \
+            "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
+          unzip -q "$RUNNER_TEMP/cmdtools.zip" -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          rm -f "$RUNNER_TEMP/cmdtools.zip"
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      # Disk-space visibility: Flutter SDK + Android SDK + NDK + Gradle
+      # caches + build intermediates + the CodeQL database add up.
+      - name: Report disk space
+        if: matrix.build-mode == 'manual'
+        run: df -h / "$HOME" "$ANDROID_SDK_ROOT"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # Manual build (the point of this workflow): the Flutter tool
+      # regenerates the gitignored Gradle wrapper and writes the gitignored
+      # android/local.properties, then compiles the Kotlin/Java sources.
+      # CodeQL traces the Gradle build, so the database covers the app and
+      # its plugins. Debug flavor: no signing key required.
+      - name: Build the app for analysis
+        if: matrix.build-mode == 'manual'
+        run: |
+          flutter pub get
+          flutter build apk --debug
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
