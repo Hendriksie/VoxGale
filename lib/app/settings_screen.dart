@@ -2,7 +2,10 @@
 // entry — validated with a cheap test request before it is saved, the value
 // never displayed — key removal, and the transcription preferences (default
 // batch model, language hint). The screen renders [SettingsState] directly
-// and owns no logic; every action goes through [SettingsController].
+// and owns no logic; every action goes through [SettingsController] — except
+// the Updates section (change 2026-10-29-update-tracker, task 6.3, design
+// decision 14), which watches the update check controller directly for the
+// manual "Check for updates" action.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +13,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../mistral/mistral.dart';
 import '../session/session_providers.dart';
 import '../session/settings_controller.dart';
+import '../update/update_check_controller.dart';
+import '../update/update_providers.dart';
 import 'error_states.dart';
 import 'theme.dart';
 
@@ -36,6 +41,8 @@ class SettingsScreen extends ConsumerWidget {
               controller: controller,
               config: config,
             ),
+            const SizedBox(height: 24),
+            const _UpdatesSection(),
           ],
         ),
       ),
@@ -272,6 +279,81 @@ class _PreferencesSection extends StatelessWidget {
           onChanged: state.loaded
               ? (value) => controller.setLanguageHint(value)
               : null,
+        ),
+      ],
+    );
+  }
+}
+
+/// The updates section (change 2026-10-29-update-tracker, tasks 6.3-6.4,
+/// design decisions 14-16): the installed version and the manual "Check for
+/// updates" action. The section watches [updateCheckControllerProvider]
+/// directly — not through [SettingsController] (design decision 14) — and
+/// reports the manual check's outcome inline: the up-to-date confirmation, or
+/// the shared [ErrorBanner] with a retry action when the check fails (the
+/// check fails only when GitHub is unreachable, hence [FailureKind.noNetwork]
+/// — design decision 16). When a manual check finds a newer version, the home
+/// screen's listener presents the update dialog over this screen (root
+/// navigator), so no dialog code lives here.
+class _UpdatesSection extends ConsumerWidget {
+  const _UpdatesSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final state = ref.watch(updateCheckControllerProvider);
+    final controller = ref.read(updateCheckControllerProvider.notifier);
+    // The installed version — nothing extra while it loads.
+    final version = ref.watch(installedVersionProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Updates', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        version.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+          data: (installed) => Text(
+            'VoxGale v$installed',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        if (state.checking) ...[
+          const SizedBox(height: 8),
+          const LinearProgressIndicator(),
+        ],
+        if (state.outcome == UpdateCheckOutcome.upToDate) ...[
+          const SizedBox(height: 8),
+          Text(
+            "You're up to date.",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+        if (state.outcome == UpdateCheckOutcome.failed) ...[
+          const SizedBox(height: 8),
+          ErrorBanner(
+            kind: FailureKind.noNetwork,
+            message: state.errorMessage,
+            onRemedy: () => controller.checkNow(),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: mistralOrange,
+                foregroundColor: Colors.black,
+              ),
+              onPressed: state.checking ? null : () => controller.checkNow(),
+              child: const Text('Check for updates'),
+            ),
+          ],
         ),
       ],
     );
