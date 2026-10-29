@@ -17,8 +17,8 @@
 
 ## 4. Platform seams and test fakes
 
-- [ ] 4.1 Create the `AppVersionReader` and `UrlOpener` interfaces in `lib/update/` with production implementations wrapping `package_info_plus` and `url_launcher`, and verify `flutter analyze` is clean and the app still builds (`flutter build apk --debug` or a debug run).
-- [ ] 4.2 Add fakes for both seams plus a fake `UpdateCheckClient` under `test/update/fakes.dart` (mirroring `test/app/fakes.dart`), and verify they compile and are exercised by the group 5-6 tests.
+- [x] 4.1 Create the `AppVersionReader` and `UrlOpener` interfaces in `lib/update/` with production implementations wrapping `package_info_plus` and `url_launcher`, and verify `flutter analyze` is clean and the app still builds (`flutter build apk --debug` or a debug run). (Verified: `lib/update/app_version_reader.dart` and `lib/update/url_opener.dart` created — `AppVersionReader`/`PackageInfoAppVersionReader` over `PackageInfo.fromPlatform()` then `.version`, `UrlOpener`/`UrlLauncherUrlOpener` over `launchUrl` with `LaunchMode.externalApplication` returning the bool (false when the platform throws); `flutter analyze` — no issues; full `flutter test` 387/387 green; `flutter build apk --debug` built `build/app/outputs/flutter-apk/app-debug.apk` with the new plugins.)
+- [x] 4.2 Add fakes for both seams plus a fake `UpdateCheckClient` under `test/update/fakes.dart` (mirroring `test/app/fakes.dart`), and verify they compile and are exercised by the group 5-6 tests. (Verified: `test/update/fakes.dart` created mirroring `test/app/fakes.dart` — `FakeAppVersionReader` (fixed version string), `FakeUrlOpener` (records opened URLs, configurable result), `FakeUpdateCheckClient` (configurable `UpdateInfo?`/queue, counts calls); compiles under `flutter analyze` (no issues) and the full `flutter test` suite (387/387 green); the fakes are ready for the group 5-6 tests.)
 
 ## 5. Controller and Riverpod wiring
 
