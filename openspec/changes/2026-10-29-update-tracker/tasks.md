@@ -41,9 +41,10 @@
 
 ## 8. Verification
 
-- [ ] 8.1 Run `flutter analyze` (clean) and the full `flutter test` suite (all green, including the new `test/update/` and storage/widget tests), and verify no test hits the live GitHub or Mistral APIs.
-- [ ] 8.2 Run `openspec validate 2026-10-29-update-tracker --strict` and verify the change validates.
+- [x] 8.1 Run `flutter analyze` (clean) and the full `flutter test` suite (all green, including the new `test/update/` and storage/widget tests), and verify no test hits the live GitHub or Mistral APIs. (Verified: `flutter analyze` — no issues; full `flutter test` 427/427 passed (357 pre-change + 70 new across test/update/, test/storage/, test/app/); every harness that touches the update controller overrides the seams with fakes, so no test hits the live GitHub or Mistral API.)
+- [x] 8.2 Run `openspec validate 2026-10-29-update-tracker --strict` and verify the change validates. (Verified: `openspec validate 2026-10-29-update-tracker --strict` — the change is valid.)
 - [ ] 8.3 Manual run: launch the app on a device/emulator and verify that with the installed version current, no popup appears and the start check is silent; then open Settings, tap "Check for updates", and verify the up-to-date confirmation, and exercise the dialog path by running the controller against a stubbed newer release (the release-notes flow for a real newer release is covered when the next `v*` tag ships). Note: this change does not touch the mic or foreground-service path, so no physical-device smoke test is required beyond this run.
+  - Orchestrator note (2026-10-29): the interactive on-device run could NOT be performed on this machine — no Android device or emulator is connected (`flutter devices` shows only a Linux desktop target, which this Android-only app cannot run on; `flutter emulators` finds no AVD sources). Verified instead: the final code builds (`flutter build apk --debug` — `build/app/outputs/flutter-apk/app-debug.apk`), and the dialog path is exercised by widget tests running the real controller against a stubbed newer release (test/app/update_dialog_test.dart, test/app/settings_screen_test.dart). The interactive run (launch, observe no popup when current, tap "Check for updates" → up-to-date confirmation) remains for a machine with an Android device — see the project KB note on connecting a physical Android device.
 
 ## Workflow follow-up
 
