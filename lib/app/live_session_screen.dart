@@ -6,7 +6,9 @@
 // differently when another app took audio focus), and the subtle
 // connection-status indicator. The transcript is turn-grouped with
 // provisional-vs-finalized styling and visible gap markers
-// (transcript_widgets.dart).
+// (transcript_widgets.dart). The screen also presents the update dialog
+// when the update check controller publishes a newer release (change
+// 2026-10-29-update-tracker, tasks 6.1-6.2, design decision 10).
 
 import 'dart:async';
 
@@ -15,6 +17,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../session/live_session_controller.dart';
 import '../session/session_providers.dart';
+import '../update/update_check_controller.dart';
+import '../update/update_dialog.dart';
+import '../update/update_providers.dart';
 import 'error_states.dart';
 import 'file_transcription_screen.dart';
 import 'formatters.dart';
@@ -67,6 +72,31 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(liveSessionControllerProvider);
     final controller = ref.read(liveSessionControllerProvider.notifier);
+    // The throttled, silent update check fires once per app run (design
+    // decision 10; the update-tracker spec's "Check for a newer release
+    // on app start").
+    ref.watch(updateCheckOnStartProvider);
+    // Present the update dialog when a check publishes a newer version
+    // (design decision 10; the spec's "Show the update dialog once per
+    // version" — the controller already gates on the recording session
+    // and the once-per-version notification, and the manual check
+    // publishes even when the version was already notified).
+    ref.listen<UpdateCheckState>(
+      updateCheckControllerProvider,
+      (previous, next) {
+        final available = next.available;
+        if (available != null &&
+            available != previous?.available &&
+            context.mounted) {
+          unawaited(showUpdateDialog(
+            context,
+            controller: ref.read(updateCheckControllerProvider.notifier),
+            info: available,
+            installedVersion: next.installedVersion,
+          ));
+        }
+      },
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('VoxGale'),

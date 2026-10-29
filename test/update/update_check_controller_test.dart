@@ -1,8 +1,8 @@
 // Unit tests for [UpdateCheckController] (change
 // 2026-10-29-update-tracker, tasks 5.1 and 5.3): the throttled, silent
 // start check and the manual check, driven through the fakes in
-// fakes.dart plus a controllable clock, an in-memory
-// [UpdateStateRepository], and a controllable recording gate — the
+// fakes.dart (including the in-memory [UpdateStateRepository]) plus a
+// controllable clock and a controllable recording gate — the
 // controller never touches the network or a platform channel here (the
 // production implementations have their own direct coverage: the Drift
 // repository in test/storage/, the dio client in
@@ -34,19 +34,6 @@ class FakeUpdateClock implements SessionClock {
   Stream<int> ticks() => const Stream<int>.empty();
 
   void advance(Duration duration) => nowValue = nowValue.add(duration);
-}
-
-/// In-memory [UpdateStateRepository] for tests.
-class InMemoryUpdateStateRepository implements UpdateStateRepository {
-  StoredUpdateState stored = const StoredUpdateState();
-
-  @override
-  Future<StoredUpdateState> loadUpdateState() async => stored;
-
-  @override
-  Future<void> saveUpdateState(StoredUpdateState state) async {
-    stored = state;
-  }
 }
 
 /// An [UpdateStateRepository] test double whose load always throws (a

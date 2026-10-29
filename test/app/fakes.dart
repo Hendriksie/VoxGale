@@ -1,8 +1,12 @@
-// Shared test doubles for the app widget tests (task 5.x): an in-memory
-// [ApiKeyStore] and a [FakeLiveSessionController] — a LiveSessionController
-// test double with a settable state whose actions record their calls instead
-// of touching the capture service, the repository, or the Mistral API. The
-// widget tests never hit real services.
+// Shared test doubles for the app widget tests (task 5.x, change
+// 2026-10-29-update-tracker tasks 6.1-6.2): an in-memory [ApiKeyStore] and
+// a [FakeLiveSessionController] — a LiveSessionController test double with
+// a settable state whose actions record their calls instead of touching
+// the capture service, the repository, or the Mistral API. [appWithStore]
+// also overrides the update tracker's providers with the fakes from
+// test/update/fakes.dart, so the home screen's start check and update
+// dialog never touch the network or a platform channel. The widget tests
+// never hit real services.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +17,9 @@ import 'package:voxgale/session/history_detail_controller.dart';
 import 'package:voxgale/session/live_session_controller.dart';
 import 'package:voxgale/session/session_providers.dart';
 import 'package:voxgale/storage/storage.dart';
+import 'package:voxgale/update/update_providers.dart';
+
+import '../update/fakes.dart';
 
 /// In-memory [ApiKeyStore] for widget tests.
 class FakeApiKeyStore implements ApiKeyStore {
@@ -272,17 +279,36 @@ class InMemoryPreferencesRepository implements PreferencesRepository {
 }
 
 /// Pumps the app shell with the given key store, session controller, and
-/// theme mode.
+/// theme mode. The update tracker is always overridden with fakes (the
+/// client, the version reader, the URL opener, and the persisted update
+/// state): the home screen fires the start check and listens for the
+/// update dialog, and no widget test may hit the live GitHub API or a
+/// platform channel (change 2026-10-29-update-tracker, tasks 6.1-6.2;
+/// design decision 11). Pass the optional fakes to drive the update flow.
 ProviderScope appWithStore(
   ApiKeyStore store, {
   ThemeMode? themeMode,
   FakeLiveSessionController? sessionController,
+  FakeUpdateCheckClient? updateClient,
+  InMemoryUpdateStateRepository? updateStateRepository,
+  FakeUrlOpener? urlOpener,
+  FakeAppVersionReader? appVersionReader,
 }) =>
     ProviderScope(
       overrides: [
         apiKeyStoreProvider.overrideWith((ref) => store),
         if (sessionController != null)
           liveSessionControllerProvider.overrideWith(() => sessionController),
+        updateCheckClientProvider
+            .overrideWith((ref) => updateClient ?? FakeUpdateCheckClient()),
+        appVersionReaderProvider.overrideWith(
+          (ref) => appVersionReader ?? FakeAppVersionReader('1.2.0'),
+        ),
+        urlOpenerProvider
+            .overrideWith((ref) => urlOpener ?? FakeUrlOpener()),
+        updateStateRepositoryProvider.overrideWith(
+          (ref) => updateStateRepository ?? InMemoryUpdateStateRepository(),
+        ),
       ],
       child: VoxtralLiveApp(themeMode: themeMode),
     );

@@ -18,7 +18,9 @@ import 'package:voxgale/main.dart';
 import 'package:voxgale/mistral/mistral.dart';
 import 'package:voxgale/session/live_session_controller.dart';
 import 'package:voxgale/session/session_providers.dart';
+import 'package:voxgale/update/update_providers.dart';
 
+import '../update/fakes.dart';
 import 'fakes.dart';
 
 class MockKeyValidationClient extends Mock implements KeyValidationClient {}
@@ -32,7 +34,11 @@ void main() {
   });
 
   /// Pumps the app shell (home = the live session screen) with the given
-  /// session state and test-double providers.
+  /// session state and test-double providers. The update tracker is
+  /// overridden with fakes too: the home screen fires the start check and
+  /// listens for the update dialog, and no widget test may hit the live
+  /// GitHub API or a platform channel (change 2026-10-29-update-tracker,
+  /// tasks 6.1-6.2; design decision 11).
   Future<void> pumpApp(
     WidgetTester tester, {
     LiveSessionState? sessionState,
@@ -48,6 +54,14 @@ void main() {
           keyValidationClientProvider.overrideWith((ref) => validator),
           liveSessionControllerProvider.overrideWith(
             () => FakeLiveSessionController(sessionState),
+          ),
+          updateCheckClientProvider
+              .overrideWith((ref) => FakeUpdateCheckClient()),
+          appVersionReaderProvider
+              .overrideWith((ref) => FakeAppVersionReader('1.2.0')),
+          urlOpenerProvider.overrideWith((ref) => FakeUrlOpener()),
+          updateStateRepositoryProvider.overrideWith(
+            (ref) => InMemoryUpdateStateRepository(),
           ),
         ],
         child: const VoxtralLiveApp(),

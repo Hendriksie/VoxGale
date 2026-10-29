@@ -5,6 +5,7 @@
 // without touching platform channels or the network (design decision 11;
 // platform channels throw or hang in widget tests — project gotcha).
 
+import 'package:voxgale/storage/storage.dart';
 import 'package:voxgale/update/app_version_reader.dart';
 import 'package:voxgale/update/update_check_client.dart';
 import 'package:voxgale/update/url_opener.dart';
@@ -56,5 +57,19 @@ class FakeUpdateCheckClient implements UpdateCheckClient {
       return queue.removeAt(0);
     }
     return result;
+  }
+}
+
+/// In-memory [UpdateStateRepository] for tests: keeps the stored state in
+/// a field (unset fields stay null — no check yet, no version notified).
+class InMemoryUpdateStateRepository implements UpdateStateRepository {
+  StoredUpdateState stored = const StoredUpdateState();
+
+  @override
+  Future<StoredUpdateState> loadUpdateState() async => stored;
+
+  @override
+  Future<void> saveUpdateState(StoredUpdateState state) async {
+    stored = state;
   }
 }
