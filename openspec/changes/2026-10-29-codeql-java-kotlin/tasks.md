@@ -52,21 +52,39 @@
 
 ## 5. Repository settings (user steps)
 
-- [ ] 5.1 Switch CodeQL from default setup to advanced setup: Settings →
+- [x] 5.1 Switch CodeQL from default setup to advanced setup: Settings →
   Security and quality → CodeQL analysis → disable the default setup
   (java-kotlin / actions coverage is unchanged — the new workflow
   analyzes both). Until this is done, GitHub rejects the advanced
-  workflow's SARIF upload (see 4.2).
-- [ ] 5.2 Re-run the CodeQL workflow on `master` (Actions → CodeQL →
+  workflow's SARIF upload (see 4.2). (Verified 2026-10-29: user disabled
+  it; the re-run's SARIF was accepted.)
+- [x] 5.2 Re-run the CodeQL workflow on `master` (Actions → CodeQL →
   "Run workflow", or push any commit) — it should go green end-to-end
   and the alerts appear under Security → Code scanning.
+  (Verified 2026-10-29: run 40852631385 completed success.)
+
+## 6. Warning triage
+
+- [x] 6.1 The remaining init warning — "Cannot build an overlay-base
+  database because build-mode is set to 'manual' instead of 'none'.
+  Falling back to creating a normal full database instead." — is benign:
+  it is CodeQL's improved incremental analysis (PR scans extracting only
+  changed files via a no-build overlay-base database), which a manual
+  build can't use. The full database is complete and correct; only the
+  PR-scan speedup is lost, which is negligible here (the java-kotlin
+  database is tiny; the Gradle build dominates). Not fixable while
+  keeping a manual build (`none` is unsupported for Kotlin, `autobuild`
+  is the original failure). Recorded in the KB Gotchas.
 
 ## Workflow follow-up
 
-- Review with the user; archive after the settings change is done, the
-  re-run is green, and the change is reviewed.
+- Review with the user; archive after the change is reviewed (the
+  workflow is green end-to-end).
 - If the user also enabled the paid **Code Quality** feature (Settings →
   Security → Code quality), add `analysis-kinds: code-scanning,code-quality`
   to the `init` step — the default-setup matrix evidence (`actions`
   language present) suggests code scanning was enabled, which this
   workflow runs.
+- Optional, if PR scan time ever matters: `dependency-caching: true` on
+  the init step (advanced setup disables it by default) to cache the
+  Gradle dependency downloads.
