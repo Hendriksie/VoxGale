@@ -8,6 +8,8 @@
 // app_database.g.dart (committed; regenerate with
 // `dart run build_runner build --delete-conflicting-outputs`).
 
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -133,6 +135,10 @@ class AppDatabase extends _$AppDatabase {
 
   /// Creates an in-memory database that persists nothing — for tests.
   AppDatabase.memory() : super(NativeDatabase.memory());
+
+  /// Opens (creating if needed) the database file at [file] — for tests
+  /// that verify persistence across a close and reopen.
+  AppDatabase.file(File file) : super(NativeDatabase(file));
 
   @override
   int get schemaVersion => 3;
