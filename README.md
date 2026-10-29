@@ -12,6 +12,9 @@ speaker-labelled text. Or import an audio file and transcribe it the same way.
 The app talks to `api.mistral.ai` directly with your key. There are no
 accounts, no cloud sync, and no telemetry — see [PRIVACY.md](PRIVACY.md).
 
+VoxGale is a personal hobby project, built entirely with AI — and free for
+anyone to use under the [MIT license](LICENSE).
+
 ## Features
 
 - **Live transcription** — realtime speech-to-text while you record, with a
