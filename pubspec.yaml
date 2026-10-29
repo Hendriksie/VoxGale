@@ -60,6 +60,13 @@ dependencies:
   # (Phase 3). Already in the tree transitively via just_audio — promoting it
   # to a direct dependency adds no new package to the lockfile.
   audio_session: ^0.2.4
+  # Exposes the installed app's versionName for the update tracker — no
+  # existing dependency provides it (pubspec version flows into it at build
+  # time).
+  package_info_plus: ^10.2.2
+  # Opens the GitHub release page in the device browser — share_plus only
+  # shares content.
+  url_launcher: ^6.3.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
