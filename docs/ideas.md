@@ -40,12 +40,13 @@ historical v1 plan lives at [project-plan.md](project-plan.md).
 
 ## New ideas (2026-10-28, from the maintainer)
 
-- **In-app update check** — check for updates in-app, including a manual
-  "check for updates" action in Settings; also explore the possibilities
-  of a full in-app updater. Open questions: version source of truth
-  (GitHub Releases API), download + install flow (Android's package
-  installer always requires user confirmation for sideloaded APKs), full
-  vs delta APK, signature verification of the downloaded artifact.
+- **In-app update check** — promoted (change `2026-10-29-update-tracker`):
+  the update tracker and the manual "check for updates" action in Settings
+  are implemented; the version source of truth is the GitHub Releases API.
+  Still parked: a full in-app updater — download + install flow (Android's
+  package installer always requires user confirmation for sideloaded
+  APKs), full vs delta APK, signature verification of the downloaded
+  artifact.
 - **Keep the screen on during sessions** — a Settings toggle that
   disables auto screen-off while a live session is recording (the app
   already holds a partial wake lock for the CPU screen-off; this would

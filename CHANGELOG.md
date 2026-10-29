@@ -6,6 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- In-app update tracker: the app checks GitHub Releases for a newer
+  version at most once a day and shows a popup with a button that opens
+  the release page; Settings gains a manual "Check for updates" action.
+
 ## [v1.2.0] - 2026-10-28
 
 ### Changed

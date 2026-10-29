@@ -1,6 +1,6 @@
 # Privacy Policy — VoxGale
 
-_Last updated: 2026-10-28_
+_Last updated: 2026-10-29_
 
 VoxGale is a personal transcription app. It records audio from your
 device's microphone and sends it to Mistral's API for transcription, using
@@ -31,7 +31,13 @@ as an APK from this repository's Releases.
   Mistral account.
 - **The API key is sent only to `api.mistral.ai`**, over TLS, and is never
   written to logs, plaintext files, shared preferences, or crash reports.
-- **Nothing else leaves the device.**
+- **The app checks GitHub Releases for newer versions** — at most once a
+  day on app start, and when you tap "Check for updates" in Settings. The
+  check is an unauthenticated request for the public release list to
+  `api.github.com`; it sends no API key, no account, and no other user
+  data.
+- **Nothing else leaves the device** — apart from the Mistral API calls
+  and the update check above, the app makes no network requests.
 
 ## What the app does not do
 
