@@ -4,6 +4,8 @@ context: |
   # VoxGale Transcription App (Android, Flutter)
 
   Live-capture + file-transcription app powered by the user's own Mistral API key.
+  Repo: Hendriksie/VoxGale. User-facing name is VoxGale — keep Mistral-branded
+  names out of user-facing strings (renamed from "Voxtral Live" on 2026-10-28).
 
   ## Stack & conventions
   - Flutter (Dart), Riverpod, Material 3 theming
@@ -12,6 +14,21 @@ context: |
     foreground service with `microphone` type (`flutter_foreground_task`)
   - UI: minimalistic & modern, Mistral orange #FF7000 as accent in BOTH
     light and dark themes; orange used sparingly (recording state, CTAs)
+
+  ## Distribution & releases (load-bearing for the update tracker)
+  - Ships as sideloaded APKs from GitHub Releases of Hendriksie/VoxGale.
+    Pushing a tag `v<semver>` runs .github/workflows/release.yml: `flutter analyze`
+    + `flutter test`, signed APK attached as `voxgale-<tag>.apk`, release notes
+    generated from the matching `## [<tag>]` section in CHANGELOG.md.
+  - The in-app update tracker (lib/update/, since v1.3.0) queries
+    api.github.com/repos/Hendriksie/VoxGale/releases/latest and parses the
+    `v<semver>` tag. Do NOT change the repo name, tag format, APK asset naming,
+    or CHANGELOG heading format — the update check depends on all of them.
+  - Version bumps: pubspec.yaml `version: <name>+<build>` plus a CHANGELOG section.
+  - This machine has no gh token and the GitHub MCP cannot create releases or
+    change repo settings: push the tag and let the release workflow publish;
+    anything under Settings (e.g. CodeQL default → advanced) is a user step in
+    the GitHub UI.
 
   ## Hard constraints
   - ALL Mistral API code lives in lib/mistral/ behind abstract interfaces
@@ -30,10 +47,34 @@ context: |
   - Never hardcode, log, or commit API keys. User-supplied key only, over TLS
     to api.mistral.ai.
   - WebSocket client must handle reconnect + local audio buffering.
+  - Platform channels (record, just_audio, path_provider, share_plus, file_picker,
+    package_info_plus, url_launcher) sit behind interfaces in lib/; tests never
+    touch them. A test fake does not replace direct tests of a seam's production
+    implementation.
+  - dio has no default timeouts — set connect/receive timeouts explicitly on every
+    HTTP client (Mistral API and the GitHub update check alike).
+  - Drift schema changes bump schemaVersion with a migration; pin drift_dev ^2.35.1,
+    drift_flutter ^0.3.1, build_runner ^2.16.2 (the drift packages are not in
+    lockstep).
+
+  ## Repo automation
+  - All workflows use first-party setup copied from release.yml (ubuntu-24.04,
+    Flutter 3.47.8 extracted to $HOME — never into the workspace, temurin JDK 17,
+    Android SDK platforms;android-36 + build-tools;36.0.0). Keep them in sync.
+  - CodeQL java/kotlin uses advanced setup with a manual build — autobuild cannot
+    build this project (gitignored gradlew, machine-local local.properties).
+  - Dependabot (.github/dependabot.yml) owns pub + GitHub Actions version bumps.
 
   ## Working rules
   - Every change starts with /opsx:propose; never implement before the
     proposal exists. Keep most changes in Lite mode.
   - Validate with `openspec validate --strict` before claiming done.
-  - Tests mock the Mistral WebSocket/REST layer (mocktail), never hit the
-    live API in unit tests.
+  - Tests mock the Mistral WebSocket/REST layer (mocktail) and the GitHub releases
+    API — never hit either live from tests.
+  - No new dependencies without a one-line justification in the proposal.
+  - Pure tooling/release changes (CI workflows, version bumps) set `skip_specs: true`
+    in the change's .openspec.yaml.
+  - Anything touching mic capture or the Android foreground service needs a
+    physical-device smoke-test step in tasks.md — emulators lie about background
+    capture. This machine has no Android device/emulator: leave such steps pending
+    user verification instead of claiming them verified.
