@@ -1,4 +1,5 @@
-// The on-device Drift database holding finalized transcription sessions.
+// The on-device Drift database holding finalized transcription sessions and
+// the app's internal update-check state.
 //
 // Design P1-D4: two tables — `sessions` (one row per finalized live session)
 // and `segments` (the session's transcript, one row per speaker segment) —
@@ -100,8 +101,31 @@ class Preferences extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// The app's persisted update-check state (change
+/// 2026-10-29-update-tracker, design decision 6): a single row (id
+/// `default`) holding when the last well-formed update check ran and which
+/// available version was last notified to the user. Null columns mean
+/// "unset". The check time is stored as epoch milliseconds, not a Drift
+/// DateTime — a DateTime round-trip loses zone and sub-millisecond
+/// precision.
+class UpdateState extends Table {
+  /// Always `default` — the table holds exactly one row.
+  TextColumn get id => text()();
+
+  /// When the last well-formed update check completed, as epoch
+  /// milliseconds, or null when no check has succeeded yet.
+  IntColumn get lastCheckAtMs => integer().nullable()();
+
+  /// The available version last notified to the user, or null when no
+  /// version has been notified yet.
+  TextColumn get lastNotifiedVersion => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// The app's SQLite database.
-@DriftDatabase(tables: [Sessions, Segments, Preferences])
+@DriftDatabase(tables: [Sessions, Segments, Preferences, UpdateState])
 class AppDatabase extends _$AppDatabase {
   /// Opens (creating if needed) the database file in the app's documents
   /// directory, via drift_flutter's platform glue.
@@ -111,7 +135,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -122,6 +146,11 @@ class AppDatabase extends _$AppDatabase {
             await migrator.addColumn(sessions, sessions.source);
             await migrator.addColumn(sessions, sessions.sourceFileName);
             await migrator.createTable(preferences);
+          }
+          if (from < 3) {
+            // Update tracker (change 2026-10-29-update-tracker, design
+            // decision 6): the single-row update_state table is new.
+            await migrator.createTable(updateState);
           }
         },
       );

@@ -1441,12 +1441,309 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
   }
 }
 
+class $UpdateStateTable extends UpdateState
+    with TableInfo<$UpdateStateTable, UpdateStateData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UpdateStateTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastCheckAtMsMeta = const VerificationMeta(
+    'lastCheckAtMs',
+  );
+  @override
+  late final GeneratedColumn<int> lastCheckAtMs = GeneratedColumn<int>(
+    'last_check_at_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastNotifiedVersionMeta =
+      const VerificationMeta('lastNotifiedVersion');
+  @override
+  late final GeneratedColumn<String> lastNotifiedVersion =
+      GeneratedColumn<String>(
+        'last_notified_version',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    lastCheckAtMs,
+    lastNotifiedVersion,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'update_state';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UpdateStateData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('last_check_at_ms')) {
+      context.handle(
+        _lastCheckAtMsMeta,
+        lastCheckAtMs.isAcceptableOrUnknown(
+          data['last_check_at_ms']!,
+          _lastCheckAtMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_notified_version')) {
+      context.handle(
+        _lastNotifiedVersionMeta,
+        lastNotifiedVersion.isAcceptableOrUnknown(
+          data['last_notified_version']!,
+          _lastNotifiedVersionMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UpdateStateData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UpdateStateData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      lastCheckAtMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_check_at_ms'],
+      ),
+      lastNotifiedVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_notified_version'],
+      ),
+    );
+  }
+
+  @override
+  $UpdateStateTable createAlias(String alias) {
+    return $UpdateStateTable(attachedDatabase, alias);
+  }
+}
+
+class UpdateStateData extends DataClass implements Insertable<UpdateStateData> {
+  /// Always `default` — the table holds exactly one row.
+  final String id;
+
+  /// When the last well-formed update check completed, as epoch
+  /// milliseconds, or null when no check has succeeded yet.
+  final int? lastCheckAtMs;
+
+  /// The available version last notified to the user, or null when no
+  /// version has been notified yet.
+  final String? lastNotifiedVersion;
+  const UpdateStateData({
+    required this.id,
+    this.lastCheckAtMs,
+    this.lastNotifiedVersion,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || lastCheckAtMs != null) {
+      map['last_check_at_ms'] = Variable<int>(lastCheckAtMs);
+    }
+    if (!nullToAbsent || lastNotifiedVersion != null) {
+      map['last_notified_version'] = Variable<String>(lastNotifiedVersion);
+    }
+    return map;
+  }
+
+  UpdateStateCompanion toCompanion(bool nullToAbsent) {
+    return UpdateStateCompanion(
+      id: Value(id),
+      lastCheckAtMs: lastCheckAtMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastCheckAtMs),
+      lastNotifiedVersion: lastNotifiedVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastNotifiedVersion),
+    );
+  }
+
+  factory UpdateStateData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UpdateStateData(
+      id: serializer.fromJson<String>(json['id']),
+      lastCheckAtMs: serializer.fromJson<int?>(json['lastCheckAtMs']),
+      lastNotifiedVersion: serializer.fromJson<String?>(
+        json['lastNotifiedVersion'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'lastCheckAtMs': serializer.toJson<int?>(lastCheckAtMs),
+      'lastNotifiedVersion': serializer.toJson<String?>(lastNotifiedVersion),
+    };
+  }
+
+  UpdateStateData copyWith({
+    String? id,
+    Value<int?> lastCheckAtMs = const Value.absent(),
+    Value<String?> lastNotifiedVersion = const Value.absent(),
+  }) => UpdateStateData(
+    id: id ?? this.id,
+    lastCheckAtMs: lastCheckAtMs.present
+        ? lastCheckAtMs.value
+        : this.lastCheckAtMs,
+    lastNotifiedVersion: lastNotifiedVersion.present
+        ? lastNotifiedVersion.value
+        : this.lastNotifiedVersion,
+  );
+  UpdateStateData copyWithCompanion(UpdateStateCompanion data) {
+    return UpdateStateData(
+      id: data.id.present ? data.id.value : this.id,
+      lastCheckAtMs: data.lastCheckAtMs.present
+          ? data.lastCheckAtMs.value
+          : this.lastCheckAtMs,
+      lastNotifiedVersion: data.lastNotifiedVersion.present
+          ? data.lastNotifiedVersion.value
+          : this.lastNotifiedVersion,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UpdateStateData(')
+          ..write('id: $id, ')
+          ..write('lastCheckAtMs: $lastCheckAtMs, ')
+          ..write('lastNotifiedVersion: $lastNotifiedVersion')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, lastCheckAtMs, lastNotifiedVersion);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UpdateStateData &&
+          other.id == this.id &&
+          other.lastCheckAtMs == this.lastCheckAtMs &&
+          other.lastNotifiedVersion == this.lastNotifiedVersion);
+}
+
+class UpdateStateCompanion extends UpdateCompanion<UpdateStateData> {
+  final Value<String> id;
+  final Value<int?> lastCheckAtMs;
+  final Value<String?> lastNotifiedVersion;
+  final Value<int> rowid;
+  const UpdateStateCompanion({
+    this.id = const Value.absent(),
+    this.lastCheckAtMs = const Value.absent(),
+    this.lastNotifiedVersion = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UpdateStateCompanion.insert({
+    required String id,
+    this.lastCheckAtMs = const Value.absent(),
+    this.lastNotifiedVersion = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id);
+  static Insertable<UpdateStateData> custom({
+    Expression<String>? id,
+    Expression<int>? lastCheckAtMs,
+    Expression<String>? lastNotifiedVersion,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (lastCheckAtMs != null) 'last_check_at_ms': lastCheckAtMs,
+      if (lastNotifiedVersion != null)
+        'last_notified_version': lastNotifiedVersion,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UpdateStateCompanion copyWith({
+    Value<String>? id,
+    Value<int?>? lastCheckAtMs,
+    Value<String?>? lastNotifiedVersion,
+    Value<int>? rowid,
+  }) {
+    return UpdateStateCompanion(
+      id: id ?? this.id,
+      lastCheckAtMs: lastCheckAtMs ?? this.lastCheckAtMs,
+      lastNotifiedVersion: lastNotifiedVersion ?? this.lastNotifiedVersion,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (lastCheckAtMs.present) {
+      map['last_check_at_ms'] = Variable<int>(lastCheckAtMs.value);
+    }
+    if (lastNotifiedVersion.present) {
+      map['last_notified_version'] = Variable<String>(
+        lastNotifiedVersion.value,
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UpdateStateCompanion(')
+          ..write('id: $id, ')
+          ..write('lastCheckAtMs: $lastCheckAtMs, ')
+          ..write('lastNotifiedVersion: $lastNotifiedVersion, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $SessionsTable sessions = $SessionsTable(this);
   late final $SegmentsTable segments = $SegmentsTable(this);
   late final $PreferencesTable preferences = $PreferencesTable(this);
+  late final $UpdateStateTable updateState = $UpdateStateTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1455,6 +1752,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessions,
     segments,
     preferences,
+    updateState,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2402,6 +2700,181 @@ typedef $$PreferencesTableProcessedTableManager =
       Preference,
       PrefetchHooks Function()
     >;
+typedef $$UpdateStateTableCreateCompanionBuilder =
+    UpdateStateCompanion Function({
+      required String id,
+      Value<int?> lastCheckAtMs,
+      Value<String?> lastNotifiedVersion,
+      Value<int> rowid,
+    });
+typedef $$UpdateStateTableUpdateCompanionBuilder =
+    UpdateStateCompanion Function({
+      Value<String> id,
+      Value<int?> lastCheckAtMs,
+      Value<String?> lastNotifiedVersion,
+      Value<int> rowid,
+    });
+
+class $$UpdateStateTableFilterComposer
+    extends Composer<_$AppDatabase, $UpdateStateTable> {
+  $$UpdateStateTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastCheckAtMs => $composableBuilder(
+    column: $table.lastCheckAtMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastNotifiedVersion => $composableBuilder(
+    column: $table.lastNotifiedVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UpdateStateTableOrderingComposer
+    extends Composer<_$AppDatabase, $UpdateStateTable> {
+  $$UpdateStateTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastCheckAtMs => $composableBuilder(
+    column: $table.lastCheckAtMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastNotifiedVersion => $composableBuilder(
+    column: $table.lastNotifiedVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UpdateStateTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UpdateStateTable> {
+  $$UpdateStateTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get lastCheckAtMs => $composableBuilder(
+    column: $table.lastCheckAtMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastNotifiedVersion => $composableBuilder(
+    column: $table.lastNotifiedVersion,
+    builder: (column) => column,
+  );
+}
+
+class $$UpdateStateTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UpdateStateTable,
+          UpdateStateData,
+          $$UpdateStateTableFilterComposer,
+          $$UpdateStateTableOrderingComposer,
+          $$UpdateStateTableAnnotationComposer,
+          $$UpdateStateTableCreateCompanionBuilder,
+          $$UpdateStateTableUpdateCompanionBuilder,
+          (
+            UpdateStateData,
+            BaseReferences<_$AppDatabase, $UpdateStateTable, UpdateStateData>,
+          ),
+          UpdateStateData,
+          PrefetchHooks Function()
+        > {
+  $$UpdateStateTableTableManager(_$AppDatabase db, $UpdateStateTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UpdateStateTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UpdateStateTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UpdateStateTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int?> lastCheckAtMs = const Value.absent(),
+                Value<String?> lastNotifiedVersion = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UpdateStateCompanion(
+                id: id,
+                lastCheckAtMs: lastCheckAtMs,
+                lastNotifiedVersion: lastNotifiedVersion,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<int?> lastCheckAtMs = const Value.absent(),
+                Value<String?> lastNotifiedVersion = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UpdateStateCompanion.insert(
+                id: id,
+                lastCheckAtMs: lastCheckAtMs,
+                lastNotifiedVersion: lastNotifiedVersion,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$UpdateStateTable, UpdateStateData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UpdateStateTable,
+                    UpdateStateData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UpdateStateTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UpdateStateTable,
+      UpdateStateData,
+      $$UpdateStateTableFilterComposer,
+      $$UpdateStateTableOrderingComposer,
+      $$UpdateStateTableAnnotationComposer,
+      $$UpdateStateTableCreateCompanionBuilder,
+      $$UpdateStateTableUpdateCompanionBuilder,
+      (
+        UpdateStateData,
+        BaseReferences<_$AppDatabase, $UpdateStateTable, UpdateStateData>,
+      ),
+      UpdateStateData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2412,4 +2885,6 @@ class $AppDatabaseManager {
       $$SegmentsTableTableManager(_db, _db.segments);
   $$PreferencesTableTableManager get preferences =>
       $$PreferencesTableTableManager(_db, _db.preferences);
+  $$UpdateStateTableTableManager get updateState =>
+      $$UpdateStateTableTableManager(_db, _db.updateState);
 }
