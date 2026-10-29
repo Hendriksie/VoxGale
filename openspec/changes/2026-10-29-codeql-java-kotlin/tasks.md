@@ -40,14 +40,31 @@
 ## 4. Validation and rollout
 
 - [x] 4.1 Run `openspec validate 2026-10-29-codeql-java-kotlin --strict`.
-- [ ] 4.2 Commit and push; the push triggers the new CodeQL workflow on
-  `master` — watch it go green end-to-end (the real proof that autobuild
-  is replaced by the manual build).
+- [x] 4.2 Commit and push; the push triggers the new CodeQL workflow on
+  `master`. (Verified 2026-10-29, run 40849762103: checkout, JDK 17,
+  Flutter SDK, Android SDK, `flutter pub get`, `flutter build apk
+  --debug`, CodeQL init, database creation and query execution all
+  succeeded — the manual build works on the runner. The analyze step
+  then failed ONLY at SARIF upload: "Code Scanning could not process the
+  submitted SARIF file: CodeQL analyses from advanced configurations
+  cannot be processed when the default setup is enabled". CI on the same
+  commit is green.)
+
+## 5. Repository settings (user steps)
+
+- [ ] 5.1 Switch CodeQL from default setup to advanced setup: Settings →
+  Security and quality → CodeQL analysis → disable the default setup
+  (java-kotlin / actions coverage is unchanged — the new workflow
+  analyzes both). Until this is done, GitHub rejects the advanced
+  workflow's SARIF upload (see 4.2).
+- [ ] 5.2 Re-run the CodeQL workflow on `master` (Actions → CodeQL →
+  "Run workflow", or push any commit) — it should go green end-to-end
+  and the alerts appear under Security → Code scanning.
 
 ## Workflow follow-up
 
-- Review with the user; archive after the change is reviewed and the
-  first CodeQL run is green.
+- Review with the user; archive after the settings change is done, the
+  re-run is green, and the change is reviewed.
 - If the user also enabled the paid **Code Quality** feature (Settings →
   Security → Code quality), add `analysis-kinds: code-scanning,code-quality`
   to the `init` step — the default-setup matrix evidence (`actions`

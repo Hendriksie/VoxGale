@@ -57,6 +57,15 @@ is set in `.openspec.yaml`.
 ## Impact
 
 - **New file**: `.github/workflows/codeql.yml`.
+- **User steps in the GitHub UI** (not expressible in the repo): switch
+  CodeQL from default setup to advanced setup — Settings → Security and
+  quality → CodeQL analysis → disable the default setup (the languages
+  java-kotlin / actions stay covered by the new workflow). Until then,
+  GitHub rejects the advanced workflow's SARIF upload with "Code Scanning
+  could not process the submitted SARIF file: CodeQL analyses from
+  advanced configurations cannot be processed when the default setup is
+  enabled" (observed on the first run of the new workflow: the manual
+  build and analysis completed, only the upload was rejected).
 - **No code or dependency changes** to the app itself.
 - The Flutter/Android setup steps are copied from `release.yml` (pinned
   runner `ubuntu-24.04`, pinned Flutter, first-party SDK installs) so CI
@@ -64,8 +73,11 @@ is set in `.openspec.yaml`.
 - Verification: the exact build commands
   (`flutter pub get` + `flutter build apk --debug`) were run in a clean
   `git worktree` of `master` (no `gradlew`, no `local.properties`) and
-  completed successfully; the workflow then runs end-to-end on the next
-  push to `master`.
+  completed successfully; the workflow then ran end-to-end on the push to
+  `master` — setup, manual build, database creation and query execution
+  all succeeded; only the SARIF upload was rejected because the default
+  setup was still enabled (see user steps above). After the settings
+  change, a re-run turns the check green.
 - Follow-up risk (not blocking): if the CodeQL Kotlin extractor rejects
   Kotlin 2.4.0 as too new, extraction (not the build) would fail next;
   that would need a Kotlin or CodeQL version pin and is out of scope here.
