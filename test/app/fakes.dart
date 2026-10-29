@@ -279,7 +279,7 @@ class FakeHistoryDetailController extends HistoryDetailController {
 
   final HistoryDetailState _state;
 
-  /// The action calls, in order ('runPass', 'delete').
+  /// The action calls, in order ('runPass', 'sendToAgent', 'delete').
   final List<String> calls = [];
 
   @override
@@ -293,6 +293,11 @@ class FakeHistoryDetailController extends HistoryDetailController {
   @override
   Future<void> runPass() async {
     calls.add('runPass');
+  }
+
+  @override
+  Future<void> sendToAgent() async {
+    calls.add('sendToAgent');
   }
 
   @override

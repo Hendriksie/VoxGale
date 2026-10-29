@@ -80,8 +80,16 @@ void main() {
   /// The export action test double: records its calls.
   final exportCalls = <({StoredSessionRecord record, bool markdown})>[];
 
+  /// The agent-reply share test double: records the shared reply text.
+  final replyShares = <String>[];
+
+  /// The selected agent id the screen reads from [agentIdProvider].
+  String? agentIdForTest = 'ag_test';
+
   setUp(() {
     exportCalls.clear();
+    replyShares.clear();
+    agentIdForTest = 'ag_test';
   });
 
   /// Pumps the detail screen with the given (fake) controller state.
@@ -99,6 +107,12 @@ void main() {
           transcriptExportProvider.overrideWith(
             (ref) => (record, _, {required markdown}) async {
               exportCalls.add((record: record, markdown: markdown));
+            },
+          ),
+          agentIdProvider.overrideWith((ref) async => agentIdForTest),
+          agentReplyShareProvider.overrideWith(
+            (ref) => (reply) async {
+              replyShares.add(reply);
             },
           ),
         ],
@@ -291,6 +305,120 @@ void main() {
       expect(find.text('Run'), findsOneWidget);
       // The provisional transcript is still shown.
       expect(find.text('Provisional text'), findsOneWidget);
+    });
+  });
+
+  group('send to agent (agent-integration spec, change '
+      '2026-10-29-send-transcript-to-agent)', () {
+    final replyRecord = StoredSessionRecord(
+      session: StoredSession(
+        id: 'file-1',
+        startedAt: DateTime(2026, 10, 26, 14, 32),
+        durationSeconds: 30,
+        model: config.batchMiniModel,
+        status: SessionStatus.finalized,
+        billedAudioSeconds: 30,
+        actualCost: 0.00175,
+        language: 'en',
+        source: StoredSession.sourceFile,
+        sourceFileName: 'interview.mp3',
+        agentReply: 'Three action items.',
+        agentReplyAtMs: DateTime(2026, 10, 26, 15, 0).millisecondsSinceEpoch,
+        agentReplyTotalTokens: 1285,
+      ),
+      segments: fileRecord.segments,
+    );
+
+    testWidgets('asks for confirmation with the data-flow disclosure and '
+        'sends on confirm', (tester) async {
+      final controller = await pumpDetail(tester, loaded(fileRecord));
+
+      await tester.tap(find.byIcon(Icons.smart_toy_outlined));
+      await tester.pumpAndSettle();
+      expect(find.text('Send to agent?'), findsOneWidget);
+      expect(find.textContaining('no conversation history is kept'),
+          findsOneWidget);
+      expect(find.textContaining('billed per token'), findsOneWidget);
+
+      await tester.tap(find.text('Send'));
+      await tester.pumpAndSettle();
+
+      expect(controller.calls, ['sendToAgent']);
+    });
+
+    testWidgets('cancelling the confirmation does not send', (tester) async {
+      final controller = await pumpDetail(tester, loaded(fileRecord));
+
+      await tester.tap(find.byIcon(Icons.smart_toy_outlined));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(controller.calls, isEmpty);
+    });
+
+    testWidgets('without a selected agent the action points to Settings',
+        (tester) async {
+      agentIdForTest = null;
+      final controller = await pumpDetail(tester, loaded(fileRecord));
+
+      await tester.tap(find.byIcon(Icons.smart_toy_outlined));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Select an agent in Settings first.'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(controller.calls, isEmpty);
+    });
+
+    testWidgets('is disabled for an empty transcript', (tester) async {
+      final emptyRecord = StoredSessionRecord(
+        session: fileRecord.session,
+        segments: const [],
+      );
+      final controller = await pumpDetail(tester, loaded(emptyRecord));
+
+      final button = tester.widget<IconButton>(
+        find.ancestor(
+          of: find.byIcon(Icons.smart_toy_outlined),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(button.onPressed, isNull);
+      expect(controller.calls, isEmpty);
+    });
+
+    testWidgets('the reply card shows the reply, time, and token usage, and '
+        'shares the reply', (tester) async {
+      await pumpDetail(tester, loaded(replyRecord));
+
+      expect(find.text('Agent reply'), findsOneWidget);
+      expect(find.text('Three action items.'), findsOneWidget);
+      expect(find.textContaining('1285 tokens'), findsOneWidget);
+      expect(find.textContaining('2026-10-26 15:00'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('shareAgentReply')));
+      await tester.pump();
+
+      expect(replyShares, ['Three action items.']);
+    });
+
+    testWidgets('an agent failure shows the error banner whose retry '
+        're-sends', (tester) async {
+      final controller = await pumpDetail(
+        tester,
+        HistoryDetailState(
+          loading: false,
+          record: fileRecord,
+          agentError: 'quota exceeded',
+        ),
+      );
+
+      expect(find.text('quota exceeded'), findsOneWidget);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+
+      expect(controller.calls, ['sendToAgent']);
     });
   });
 }

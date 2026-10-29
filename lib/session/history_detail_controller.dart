@@ -11,6 +11,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../app/transcript_export.dart';
 import '../mistral/mistral.dart';
 import '../storage/storage.dart';
 import 'session_providers.dart';
@@ -24,6 +25,8 @@ class HistoryDetailState {
     this.passEstimatedCost,
     this.passRunning = false,
     this.error = '',
+    this.agentSending = false,
+    this.agentError = '',
   });
 
   /// Whether the record is being loaded.
@@ -46,8 +49,17 @@ class HistoryDetailState {
   /// The current error message (the pass failure); empty when there is none.
   final String error;
 
+  /// Whether the send-to-agent call is in flight.
+  final bool agentSending;
+
+  /// The send-to-agent failure; empty when there is none.
+  final String agentError;
+
   /// Whether [error] carries a message.
   bool get hasError => error.isNotEmpty;
+
+  /// Whether [agentError] carries a message.
+  bool get hasAgentError => agentError.isNotEmpty;
 
   HistoryDetailState copyWith({
     bool? loading,
@@ -56,6 +68,8 @@ class HistoryDetailState {
     double? passEstimatedCost,
     bool? passRunning,
     String? error,
+    bool? agentSending,
+    String? agentError,
   }) =>
       HistoryDetailState(
         loading: loading ?? this.loading,
@@ -64,6 +78,8 @@ class HistoryDetailState {
         passEstimatedCost: passEstimatedCost ?? this.passEstimatedCost,
         passRunning: passRunning ?? this.passRunning,
         error: error ?? this.error,
+        agentSending: agentSending ?? this.agentSending,
+        agentError: agentError ?? this.agentError,
       );
 
   @override
@@ -75,7 +91,9 @@ class HistoryDetailState {
           retainedAudioPath == other.retainedAudioPath &&
           passEstimatedCost == other.passEstimatedCost &&
           passRunning == other.passRunning &&
-          error == other.error;
+          error == other.error &&
+          agentSending == other.agentSending &&
+          agentError == other.agentError;
 
   @override
   int get hashCode => Object.hash(
@@ -85,6 +103,8 @@ class HistoryDetailState {
         passEstimatedCost,
         passRunning,
         error,
+        agentSending,
+        agentError,
       );
 }
 
@@ -187,6 +207,61 @@ class HistoryDetailController extends Notifier<HistoryDetailState> {
       state = state.copyWith(
         passRunning: false,
         error: 'The speaker-attribution pass failed: $e',
+      );
+    }
+  }
+
+  /// Sends the transcript to the selected agent (agent-integration spec,
+  /// change 2026-10-29-send-transcript-to-agent): the Markdown export goes
+  /// out as a one-shot conversation (the client always sends store=false),
+  /// the reply is persisted with the session and shown. A failure keeps the
+  /// previous reply and shows the sanitized error with a retry.
+  Future<void> sendToAgent() async {
+    final record = state.record;
+    if (record == null || record.segments.isEmpty || state.agentSending) {
+      return;
+    }
+    final agentId = await ref.read(agentIdProvider.future);
+    if (agentId == null || agentId.isEmpty) {
+      return;
+    }
+    state = state.copyWith(agentSending: true, agentError: '');
+    try {
+      final client = await ref.read(agentClientProvider.future);
+      final payload = transcriptToMarkdown(
+        record.session,
+        record.segments,
+        ref.read(mistralConfigProvider),
+      );
+      final reply = await client.sendToAgent(
+        agentId: agentId,
+        transcript: payload,
+      );
+      await ref.read(sessionRepositoryProvider).saveAgentReply(
+            record.session.id,
+            reply: reply.text,
+            atMs: DateTime.now().millisecondsSinceEpoch,
+            totalTokens: reply.totalTokens ?? 0,
+          );
+      if (!ref.mounted) {
+        return;
+      }
+      // The session row changed (the stored reply) — the history list behind
+      // this screen must re-read it.
+      ref.invalidate(historyListProvider);
+      await _load();
+    } on MistralApiException catch (e) {
+      if (!ref.mounted) {
+        return;
+      }
+      state = state.copyWith(agentSending: false, agentError: e.message);
+    } catch (e) {
+      if (!ref.mounted) {
+        return;
+      }
+      state = state.copyWith(
+        agentSending: false,
+        agentError: 'The agent call failed: $e',
       );
     }
   }

@@ -14,6 +14,7 @@ import '../session/history_detail_controller.dart';
 import '../session/session_models.dart';
 import '../session/session_providers.dart';
 import '../storage/storage.dart';
+import 'error_states.dart';
 import 'formatters.dart';
 import 'theme.dart';
 import 'transcript_export.dart';
@@ -37,6 +38,21 @@ class HistoryDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Transcript'),
         actions: [
+          IconButton(
+            tooltip: 'Send to agent',
+            icon: state.agentSending
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  )
+                : const Icon(Icons.smart_toy_outlined),
+            onPressed:
+                state.record == null ||
+                    state.record!.segments.isEmpty ||
+                    state.agentSending
+                ? null
+                : () => _sendToAgent(context, ref, controller, state),
+          ),
           IconButton(
             tooltip: 'Export',
             icon: const Icon(Icons.ios_share_outlined),
@@ -74,6 +90,58 @@ class HistoryDetailScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  /// The send-to-agent action (agent-integration spec, change
+  /// 2026-10-29-send-transcript-to-agent): without a selected agent the user
+  /// is pointed to Settings; otherwise a confirm dialog states the data flow
+  /// (one-shot conversation, nothing stored server-side, billed per token,
+  /// the agent runs with its own tools) before the send runs.
+  Future<void> _sendToAgent(
+    BuildContext context,
+    WidgetRef ref,
+    HistoryDetailController controller,
+    HistoryDetailState state,
+  ) async {
+    final agentId = await ref.read(agentIdProvider.future);
+    if (!context.mounted) {
+      return;
+    }
+    if (agentId == null || agentId.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Select an agent in Settings first.'),
+          ),
+        );
+      }
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Send to agent?'),
+        content: const Text(
+          'The full transcript is sent to your agent as a one-shot '
+          'conversation; no conversation history is kept. The call is '
+          'billed per token under your API key, and the agent runs with its '
+          'own tools.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await controller.sendToAgent();
+    }
   }
 
   Future<void> _showExportSheet(
@@ -210,6 +278,13 @@ class _DetailBody extends StatelessWidget {
         ),
         if (state.retainedAudioPath != null)
           _PassReofferCard(state: state, controller: controller),
+        if (state.hasAgentError)
+          ErrorBanner(
+            kind: classifyFailure(state.agentError),
+            message: state.agentError,
+            onRemedy: () => controller.sendToAgent(),
+          ),
+        if (session.agentReply != null) _AgentReplyCard(session: session),
         Expanded(
           child: segments.isEmpty
               ? Center(
@@ -233,6 +308,65 @@ class _DetailBody extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// The agent reply card (agent-integration spec, change
+/// 2026-10-29-send-transcript-to-agent): the latest reply stored with the
+/// session — text, time, token usage — with a share action that exports the
+/// reply via the share sheet.
+class _AgentReplyCard extends ConsumerWidget {
+  const _AgentReplyCard({required this.session});
+
+  /// The session whose stored agent reply is shown.
+  final StoredSession session;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final reply = session.agentReply!;
+    final at = session.agentReplyAtMs != null
+        ? formatDateTime(
+            DateTime.fromMillisecondsSinceEpoch(session.agentReplyAtMs!),
+          )
+        : null;
+    final tokens = session.agentReplyTotalTokens;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('Agent reply', style: theme.textTheme.titleMedium),
+                  const Spacer(),
+                  IconButton(
+                    key: const Key('shareAgentReply'),
+                    tooltip: 'Share reply',
+                    icon: const Icon(Icons.ios_share_outlined),
+                    onPressed: () => ref.read(agentReplyShareProvider)(reply),
+                  ),
+                ],
+              ),
+              Text(
+                [
+                  ?at,
+                  if (tokens != null) '$tokens tokens',
+                ].join(' · '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(reply, style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -100,6 +100,30 @@ List<String> _markdownSegmentLines(StoredSegment segment) {
   return heading.isEmpty ? [segment.text] : [heading, segment.text];
 }
 
+/// Shares an agent reply via the share sheet (agent-integration spec, change
+/// 2026-10-29-send-transcript-to-agent). A provider so widget tests can
+/// record it instead of touching the platform channel.
+final agentReplyShareProvider = Provider<Future<void> Function(String reply)>(
+  (ref) => shareAgentReply,
+);
+
+/// Writes [reply] to a temp file and opens the system share sheet. The temp
+/// file goes to the system temp directory (on Android the app's cache dir),
+/// so no platform channel is needed; the share step is injectable for tests.
+Future<void> shareAgentReply(
+  String reply, {
+  Future<ShareResult> Function(ShareParams params)? share,
+}) async {
+  final file = File(
+    '${Directory.systemTemp.path}/voxgale-agent-reply-'
+    '${DateTime.now().millisecondsSinceEpoch}.txt',
+  );
+  await file.writeAsString(reply);
+  await (share ?? SharePlus.instance.share)(
+    ShareParams(files: [XFile(file.path)]),
+  );
+}
+
 /// Writes the export to a temp file and opens the system share sheet
 /// (transcript-history spec: export via the share sheet). The temp file goes
 /// to the system temp directory — on Android that is the app's cache dir,

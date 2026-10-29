@@ -22,6 +22,8 @@ import 'package:voxgale/storage/storage.dart';
 class MockBatchTranscriptionClient extends Mock
     implements BatchTranscriptionClient {}
 
+class MockAgentClient extends Mock implements AgentClient {}
+
 class InMemorySessionRepository implements SessionRepository {
   final Map<String, StoredSessionRecord> records = {};
 
@@ -149,12 +151,15 @@ void main() {
       ),
     );
     registerFallbackValue(<StoredSegment>[]);
+    registerFallbackValue('');
   });
 
   const config = MistralConfig.defaults;
   late Directory tempDir;
   late InMemorySessionRepository repository;
   late MockBatchTranscriptionClient batchClient;
+  late MockAgentClient agentClient;
+  late InMemoryPreferencesRepository preferences;
   late ProviderContainer container;
 
   HistoryDetailState state(String sessionId) =>
@@ -221,13 +226,15 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('voxtral_history_ctrl_test');
     repository = InMemorySessionRepository();
     batchClient = MockBatchTranscriptionClient();
+    agentClient = MockAgentClient();
+    preferences = InMemoryPreferencesRepository();
     container = ProviderContainer(
       overrides: [
         sessionRepositoryProvider.overrideWith((ref) => repository),
-        preferencesRepositoryProvider
-            .overrideWith((ref) => InMemoryPreferencesRepository()),
+        preferencesRepositoryProvider.overrideWith((ref) => preferences),
         batchTranscriptionClientProvider
             .overrideWith((ref) async => batchClient),
+        agentClientProvider.overrideWith((ref) async => agentClient),
       ],
     );
   });
@@ -457,6 +464,118 @@ void main() {
 
       expect(repository.records, isEmpty);
       expect(await repository.loadSession('file-1'), isNull);
+    });
+  });
+
+  group('sendToAgent (agent-integration spec, change '
+      '2026-10-29-send-transcript-to-agent)', () {
+    const reply = AgentReply(
+      text: 'Three action items.',
+      promptTokens: 1200,
+      completionTokens: 85,
+      totalTokens: 1285,
+    );
+
+    test('sends the Markdown export, persists the reply, and reloads',
+        () async {
+      repository.add(finalSession('file-1'), segments('file-1'));
+      preferences.stored = const StoredPreferences(agentId: 'ag_1');
+      when(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      ).thenAnswer((_) async => reply);
+
+      controller('file-1');
+      await waitFor('file-1', () => !state('file-1').loading);
+      await controller('file-1').sendToAgent();
+      await waitFor('file-1', () => !state('file-1').agentSending);
+
+      // The payload is the transcript's Markdown export (speaker labels
+      // and the header included).
+      final call = verify(
+        () => agentClient.sendToAgent(
+          agentId: captureAny(named: 'agentId'),
+          transcript: captureAny(named: 'transcript'),
+        ),
+      ).captured;
+      expect(call[0], 'ag_1');
+      final payload = call[1] as String;
+      expect(payload, contains('# Transcript'));
+      expect(payload, contains('Provisional text'));
+
+      // The reply is persisted with the session and shown after the reload.
+      final stored = await repository.loadSession('file-1');
+      expect(stored!.session.agentReply, 'Three action items.');
+      expect(stored.session.agentReplyTotalTokens, 1285);
+      expect(stored.session.agentReplyAtMs, isNotNull);
+      expect(state('file-1').record!.session.agentReply, 'Three action items.');
+      expect(state('file-1').hasAgentError, isFalse);
+    });
+
+    test('an API failure sets the sanitized error and keeps the previous '
+        'reply', () async {
+      repository.add(finalSession('file-1'), segments('file-1'));
+      preferences.stored = const StoredPreferences(agentId: 'ag_1');
+      var calls = 0;
+      when(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      ).thenAnswer((_) async {
+        calls++;
+        if (calls == 1) {
+          return reply;
+        }
+        throw MistralApiException('quota exceeded');
+      });
+
+      controller('file-1');
+      await waitFor('file-1', () => !state('file-1').loading);
+      await controller('file-1').sendToAgent();
+      await waitFor('file-1', () => !state('file-1').agentSending);
+      expect(state('file-1').record!.session.agentReply, 'Three action items.');
+
+      await controller('file-1').sendToAgent();
+
+      expect(state('file-1').hasAgentError, isTrue);
+      expect(state('file-1').agentError, 'quota exceeded');
+      // The previous reply is kept.
+      final stored = await repository.loadSession('file-1');
+      expect(stored!.session.agentReply, 'Three action items.');
+    });
+
+    test('is a no-op when no agent is selected', () async {
+      repository.add(finalSession('file-1'), segments('file-1'));
+
+      controller('file-1');
+      await waitFor('file-1', () => !state('file-1').loading);
+      await controller('file-1').sendToAgent();
+
+      verifyNever(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      );
+    });
+
+    test('is a no-op for an empty transcript', () async {
+      repository.add(finalSession('empty-1'), const []);
+      preferences.stored = const StoredPreferences(agentId: 'ag_1');
+
+      controller('empty-1');
+      await waitFor('empty-1', () => !state('empty-1').loading);
+      await controller('empty-1').sendToAgent();
+
+      verifyNever(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      );
     });
   });
 }
