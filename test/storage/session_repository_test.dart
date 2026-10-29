@@ -310,4 +310,100 @@ void main() {
       expect(await repository.listSessions(), isEmpty);
     });
   });
+
+  group('saveAgentReply (change 2026-10-29-send-transcript-to-agent)', () {
+    test('stores the reply with its time and token usage and loads it back',
+        () async {
+      await repository.saveSession(session(), segments('session-1'));
+
+      await repository.saveAgentReply(
+        'session-1',
+        reply: 'Three action items.',
+        atMs: 1761800000000,
+        totalTokens: 1285,
+      );
+
+      final loaded = (await repository.loadSession('session-1'))!;
+      expect(loaded.session.agentReply, 'Three action items.');
+      expect(loaded.session.agentReplyAtMs, 1761800000000);
+      expect(loaded.session.agentReplyTotalTokens, 1285);
+      // The transcript itself is untouched.
+      expect(loaded.segments, segments('session-1'));
+    });
+
+    test('a re-send overwrites the previous reply', () async {
+      await repository.saveSession(session(), segments('session-1'));
+      await repository.saveAgentReply(
+        'session-1',
+        reply: 'First reply',
+        atMs: 1,
+        totalTokens: 100,
+      );
+
+      await repository.saveAgentReply(
+        'session-1',
+        reply: 'Second reply',
+        atMs: 2,
+        totalTokens: 200,
+      );
+
+      final loaded = (await repository.loadSession('session-1'))!;
+      expect(loaded.session.agentReply, 'Second reply');
+      expect(loaded.session.agentReplyAtMs, 2);
+      expect(loaded.session.agentReplyTotalTokens, 200);
+    });
+
+    test('throws ArgumentError for an unknown session id', () async {
+      await expectLater(
+        repository.saveAgentReply(
+          'missing',
+          reply: 'x',
+          atMs: 1,
+          totalTokens: 1,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('deleting the session removes the reply with it', () async {
+      await repository.saveSession(session(), segments('session-1'));
+      await repository.saveAgentReply(
+        'session-1',
+        reply: 'reply',
+        atMs: 1,
+        totalTokens: 5,
+      );
+
+      await repository.deleteSession('session-1');
+
+      expect(await repository.loadSession('session-1'), isNull);
+    });
+
+    // Plain test() with real file IO — testWidgets + dart:io deadlocks
+    // (project gotcha). A file-backed database proves the reply survives a
+    // close and reopen.
+    test('the reply persists across a close and reopen', () async {
+      final dir = await Directory.systemTemp.createTemp('voxgale_storage_test_');
+      addTearDown(() async {
+        if (await dir.exists()) await dir.delete(recursive: true);
+      });
+      final file = File('${dir.path}/db.sqlite');
+
+      final first = DriftSessionRepository(AppDatabase.file(file));
+      await first.saveSession(session(), segments('session-1'));
+      await first.saveAgentReply(
+        'session-1',
+        reply: 'Persisted reply',
+        atMs: 1761800000000,
+        totalTokens: 42,
+      );
+      await first.close();
+
+      final second = DriftSessionRepository(AppDatabase.file(file));
+      addTearDown(second.close);
+      final loaded = (await second.loadSession('session-1'))!;
+      expect(loaded.session.agentReply, 'Persisted reply');
+      expect(loaded.session.agentReplyTotalTokens, 42);
+    });
+  });
 }

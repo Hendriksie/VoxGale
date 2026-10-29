@@ -37,6 +37,9 @@ class StoredSession {
     this.audioPath,
     this.source = sourceLive,
     this.sourceFileName,
+    this.agentReply,
+    this.agentReplyAtMs,
+    this.agentReplyTotalTokens,
   });
 
   /// Source value for a live session (design P2-D3).
@@ -82,6 +85,18 @@ class StoredSession {
   /// sessions.
   final String? sourceFileName;
 
+  /// The latest agent reply for this session's transcript (change
+  /// 2026-10-29-send-transcript-to-agent), or null when never sent.
+  final String? agentReply;
+
+  /// When the latest agent reply arrived, as epoch milliseconds; null when
+  /// there is no reply.
+  final int? agentReplyAtMs;
+
+  /// Total tokens billed for the latest agent call, when reported; null when
+  /// there is no reply.
+  final int? agentReplyTotalTokens;
+
   /// Two sessions are equal when they describe the same stored record.
   /// [startedAt] is compared at millisecond precision — the precision the
   /// SQLite column stores — so a save/load round-trip preserves equality
@@ -101,7 +116,10 @@ class StoredSession {
           status == other.status &&
           audioPath == other.audioPath &&
           source == other.source &&
-          sourceFileName == other.sourceFileName;
+          sourceFileName == other.sourceFileName &&
+          agentReply == other.agentReply &&
+          agentReplyAtMs == other.agentReplyAtMs &&
+          agentReplyTotalTokens == other.agentReplyTotalTokens;
 
   @override
   int get hashCode => Object.hash(
@@ -116,6 +134,9 @@ class StoredSession {
         audioPath,
         source,
         sourceFileName,
+        agentReply,
+        agentReplyAtMs,
+        agentReplyTotalTokens,
       );
 }
 
@@ -214,6 +235,16 @@ abstract interface class SessionRepository {
     List<StoredSegment> segments, {
     required int billedAudioSeconds,
     required double actualCost,
+  });
+
+  /// Stores the latest agent reply for a session, overwriting any previous
+  /// one (agent-integration spec: persist the latest reply per transcript).
+  /// Throws ArgumentError for an unknown session id.
+  Future<void> saveAgentReply(
+    String sessionId, {
+    required String reply,
+    required int atMs,
+    required int totalTokens,
   });
 
   /// Deletes a session, its segments, and its audio file (when the file still
@@ -325,6 +356,27 @@ class DriftSessionRepository implements SessionRepository {
   }
 
   @override
+  Future<void> saveAgentReply(
+    String sessionId, {
+    required String reply,
+    required int atMs,
+    required int totalTokens,
+  }) async {
+    final updated = await (_db.update(_db.sessions)
+          ..where((s) => s.id.equals(sessionId)))
+        .write(
+      SessionsCompanion(
+        agentReply: Value(reply),
+        agentReplyAtMs: Value(atMs),
+        agentReplyTotalTokens: Value(totalTokens),
+      ),
+    );
+    if (updated == 0) {
+      throw ArgumentError.value(sessionId, 'sessionId', 'Unknown session id');
+    }
+  }
+
+  @override
   Future<void> deleteSession(String id) async {
     final record = await loadSession(id);
     await _db.transaction(() async {
@@ -399,6 +451,9 @@ class DriftSessionRepository implements SessionRepository {
       audioPath: Value(session.audioPath),
       source: Value(session.source),
       sourceFileName: Value(session.sourceFileName),
+      agentReply: Value(session.agentReply),
+      agentReplyAtMs: Value(session.agentReplyAtMs),
+      agentReplyTotalTokens: Value(session.agentReplyTotalTokens),
     );
   }
 
@@ -426,6 +481,9 @@ class DriftSessionRepository implements SessionRepository {
       audioPath: row.audioPath,
       source: row.source,
       sourceFileName: row.sourceFileName,
+      agentReply: row.agentReply,
+      agentReplyAtMs: row.agentReplyAtMs,
+      agentReplyTotalTokens: row.agentReplyTotalTokens,
     );
   }
 

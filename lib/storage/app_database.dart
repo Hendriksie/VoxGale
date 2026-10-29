@@ -55,6 +55,19 @@ class Sessions extends Table {
 
   /// The imported file's name, for `file` sessions; null for live sessions.
   TextColumn get sourceFileName => text().nullable()();
+
+  /// The latest agent reply for this session's transcript (change
+  /// 2026-10-29-send-transcript-to-agent), or null when the transcript was
+  /// never sent to an agent.
+  TextColumn get agentReply => text().nullable()();
+
+  /// When the latest agent reply arrived, as epoch milliseconds; null when
+  /// there is no reply.
+  IntColumn get agentReplyAtMs => integer().nullable()();
+
+  /// Total tokens billed for the latest agent call, when the API reported
+  /// usage; null when there is no reply.
+  IntColumn get agentReplyTotalTokens => integer().nullable()();
 }
 
 /// One transcript segment of a session (design P1-D4).
@@ -104,6 +117,12 @@ class Preferences extends Table {
   /// 2026-10-29-keep-screen-on-during-sessions), or null for off.
   BoolColumn get keepScreenOn => boolean().nullable()();
 
+  /// The agent selected for send-to-agent (change
+  /// 2026-10-29-send-transcript-to-agent), or null when none is selected.
+  /// An agent ID is a workspace object reference, not a credential, so it
+  /// lives here in plain text — unlike the API key.
+  TextColumn get agentId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -146,7 +165,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.file(File file) : super(NativeDatabase(file));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -168,6 +187,16 @@ class AppDatabase extends _$AppDatabase {
             // design decision 5): the preferences row learns the
             // keep_screen_on toggle; existing rows read as null → off.
             await migrator.addColumn(preferences, preferences.keepScreenOn);
+          }
+          if (from < 5) {
+            // Send transcript to agent (change
+            // 2026-10-29-send-transcript-to-agent, design decision 7): the
+            // preferences row learns the selected agent; the sessions row
+            // learns the latest agent reply. Existing rows read as null.
+            await migrator.addColumn(preferences, preferences.agentId);
+            await migrator.addColumn(sessions, sessions.agentReply);
+            await migrator.addColumn(sessions, sessions.agentReplyAtMs);
+            await migrator.addColumn(sessions, sessions.agentReplyTotalTokens);
           }
         },
       );

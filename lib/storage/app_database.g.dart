@@ -121,6 +121,38 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _agentReplyMeta = const VerificationMeta(
+    'agentReply',
+  );
+  @override
+  late final GeneratedColumn<String> agentReply = GeneratedColumn<String>(
+    'agent_reply',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _agentReplyAtMsMeta = const VerificationMeta(
+    'agentReplyAtMs',
+  );
+  @override
+  late final GeneratedColumn<int> agentReplyAtMs = GeneratedColumn<int>(
+    'agent_reply_at_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _agentReplyTotalTokensMeta =
+      const VerificationMeta('agentReplyTotalTokens');
+  @override
+  late final GeneratedColumn<int> agentReplyTotalTokens = GeneratedColumn<int>(
+    'agent_reply_total_tokens',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -134,6 +166,9 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
     audioPath,
     source,
     sourceFileName,
+    agentReply,
+    agentReplyAtMs,
+    agentReplyTotalTokens,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -229,6 +264,30 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         ),
       );
     }
+    if (data.containsKey('agent_reply')) {
+      context.handle(
+        _agentReplyMeta,
+        agentReply.isAcceptableOrUnknown(data['agent_reply']!, _agentReplyMeta),
+      );
+    }
+    if (data.containsKey('agent_reply_at_ms')) {
+      context.handle(
+        _agentReplyAtMsMeta,
+        agentReplyAtMs.isAcceptableOrUnknown(
+          data['agent_reply_at_ms']!,
+          _agentReplyAtMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('agent_reply_total_tokens')) {
+      context.handle(
+        _agentReplyTotalTokensMeta,
+        agentReplyTotalTokens.isAcceptableOrUnknown(
+          data['agent_reply_total_tokens']!,
+          _agentReplyTotalTokensMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -282,6 +341,18 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
         DriftSqlType.string,
         data['${effectivePrefix}source_file_name'],
       ),
+      agentReply: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent_reply'],
+      ),
+      agentReplyAtMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}agent_reply_at_ms'],
+      ),
+      agentReplyTotalTokens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}agent_reply_total_tokens'],
+      ),
     );
   }
 
@@ -329,6 +400,19 @@ class Session extends DataClass implements Insertable<Session> {
 
   /// The imported file's name, for `file` sessions; null for live sessions.
   final String? sourceFileName;
+
+  /// The latest agent reply for this session's transcript (change
+  /// 2026-10-29-send-transcript-to-agent), or null when the transcript was
+  /// never sent to an agent.
+  final String? agentReply;
+
+  /// When the latest agent reply arrived, as epoch milliseconds; null when
+  /// there is no reply.
+  final int? agentReplyAtMs;
+
+  /// Total tokens billed for the latest agent call, when the API reported
+  /// usage; null when there is no reply.
+  final int? agentReplyTotalTokens;
   const Session({
     required this.id,
     required this.startedAt,
@@ -341,6 +425,9 @@ class Session extends DataClass implements Insertable<Session> {
     this.audioPath,
     required this.source,
     this.sourceFileName,
+    this.agentReply,
+    this.agentReplyAtMs,
+    this.agentReplyTotalTokens,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -365,6 +452,15 @@ class Session extends DataClass implements Insertable<Session> {
     map['source'] = Variable<String>(source);
     if (!nullToAbsent || sourceFileName != null) {
       map['source_file_name'] = Variable<String>(sourceFileName);
+    }
+    if (!nullToAbsent || agentReply != null) {
+      map['agent_reply'] = Variable<String>(agentReply);
+    }
+    if (!nullToAbsent || agentReplyAtMs != null) {
+      map['agent_reply_at_ms'] = Variable<int>(agentReplyAtMs);
+    }
+    if (!nullToAbsent || agentReplyTotalTokens != null) {
+      map['agent_reply_total_tokens'] = Variable<int>(agentReplyTotalTokens);
     }
     return map;
   }
@@ -392,6 +488,15 @@ class Session extends DataClass implements Insertable<Session> {
       sourceFileName: sourceFileName == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceFileName),
+      agentReply: agentReply == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentReply),
+      agentReplyAtMs: agentReplyAtMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentReplyAtMs),
+      agentReplyTotalTokens: agentReplyTotalTokens == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentReplyTotalTokens),
     );
   }
 
@@ -412,6 +517,11 @@ class Session extends DataClass implements Insertable<Session> {
       audioPath: serializer.fromJson<String?>(json['audioPath']),
       source: serializer.fromJson<String>(json['source']),
       sourceFileName: serializer.fromJson<String?>(json['sourceFileName']),
+      agentReply: serializer.fromJson<String?>(json['agentReply']),
+      agentReplyAtMs: serializer.fromJson<int?>(json['agentReplyAtMs']),
+      agentReplyTotalTokens: serializer.fromJson<int?>(
+        json['agentReplyTotalTokens'],
+      ),
     );
   }
   @override
@@ -429,6 +539,9 @@ class Session extends DataClass implements Insertable<Session> {
       'audioPath': serializer.toJson<String?>(audioPath),
       'source': serializer.toJson<String>(source),
       'sourceFileName': serializer.toJson<String?>(sourceFileName),
+      'agentReply': serializer.toJson<String?>(agentReply),
+      'agentReplyAtMs': serializer.toJson<int?>(agentReplyAtMs),
+      'agentReplyTotalTokens': serializer.toJson<int?>(agentReplyTotalTokens),
     };
   }
 
@@ -444,6 +557,9 @@ class Session extends DataClass implements Insertable<Session> {
     Value<String?> audioPath = const Value.absent(),
     String? source,
     Value<String?> sourceFileName = const Value.absent(),
+    Value<String?> agentReply = const Value.absent(),
+    Value<int?> agentReplyAtMs = const Value.absent(),
+    Value<int?> agentReplyTotalTokens = const Value.absent(),
   }) => Session(
     id: id ?? this.id,
     startedAt: startedAt ?? this.startedAt,
@@ -460,6 +576,13 @@ class Session extends DataClass implements Insertable<Session> {
     sourceFileName: sourceFileName.present
         ? sourceFileName.value
         : this.sourceFileName,
+    agentReply: agentReply.present ? agentReply.value : this.agentReply,
+    agentReplyAtMs: agentReplyAtMs.present
+        ? agentReplyAtMs.value
+        : this.agentReplyAtMs,
+    agentReplyTotalTokens: agentReplyTotalTokens.present
+        ? agentReplyTotalTokens.value
+        : this.agentReplyTotalTokens,
   );
   Session copyWithCompanion(SessionsCompanion data) {
     return Session(
@@ -482,6 +605,15 @@ class Session extends DataClass implements Insertable<Session> {
       sourceFileName: data.sourceFileName.present
           ? data.sourceFileName.value
           : this.sourceFileName,
+      agentReply: data.agentReply.present
+          ? data.agentReply.value
+          : this.agentReply,
+      agentReplyAtMs: data.agentReplyAtMs.present
+          ? data.agentReplyAtMs.value
+          : this.agentReplyAtMs,
+      agentReplyTotalTokens: data.agentReplyTotalTokens.present
+          ? data.agentReplyTotalTokens.value
+          : this.agentReplyTotalTokens,
     );
   }
 
@@ -498,7 +630,10 @@ class Session extends DataClass implements Insertable<Session> {
           ..write('status: $status, ')
           ..write('audioPath: $audioPath, ')
           ..write('source: $source, ')
-          ..write('sourceFileName: $sourceFileName')
+          ..write('sourceFileName: $sourceFileName, ')
+          ..write('agentReply: $agentReply, ')
+          ..write('agentReplyAtMs: $agentReplyAtMs, ')
+          ..write('agentReplyTotalTokens: $agentReplyTotalTokens')
           ..write(')'))
         .toString();
   }
@@ -516,6 +651,9 @@ class Session extends DataClass implements Insertable<Session> {
     audioPath,
     source,
     sourceFileName,
+    agentReply,
+    agentReplyAtMs,
+    agentReplyTotalTokens,
   );
   @override
   bool operator ==(Object other) =>
@@ -531,7 +669,10 @@ class Session extends DataClass implements Insertable<Session> {
           other.status == this.status &&
           other.audioPath == this.audioPath &&
           other.source == this.source &&
-          other.sourceFileName == this.sourceFileName);
+          other.sourceFileName == this.sourceFileName &&
+          other.agentReply == this.agentReply &&
+          other.agentReplyAtMs == this.agentReplyAtMs &&
+          other.agentReplyTotalTokens == this.agentReplyTotalTokens);
 }
 
 class SessionsCompanion extends UpdateCompanion<Session> {
@@ -546,6 +687,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
   final Value<String?> audioPath;
   final Value<String> source;
   final Value<String?> sourceFileName;
+  final Value<String?> agentReply;
+  final Value<int?> agentReplyAtMs;
+  final Value<int?> agentReplyTotalTokens;
   final Value<int> rowid;
   const SessionsCompanion({
     this.id = const Value.absent(),
@@ -559,6 +703,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.audioPath = const Value.absent(),
     this.source = const Value.absent(),
     this.sourceFileName = const Value.absent(),
+    this.agentReply = const Value.absent(),
+    this.agentReplyAtMs = const Value.absent(),
+    this.agentReplyTotalTokens = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SessionsCompanion.insert({
@@ -573,6 +720,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     this.audioPath = const Value.absent(),
     this.source = const Value.absent(),
     this.sourceFileName = const Value.absent(),
+    this.agentReply = const Value.absent(),
+    this.agentReplyAtMs = const Value.absent(),
+    this.agentReplyTotalTokens = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        startedAt = Value(startedAt),
@@ -591,6 +741,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Expression<String>? audioPath,
     Expression<String>? source,
     Expression<String>? sourceFileName,
+    Expression<String>? agentReply,
+    Expression<int>? agentReplyAtMs,
+    Expression<int>? agentReplyTotalTokens,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -606,6 +759,10 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       if (audioPath != null) 'audio_path': audioPath,
       if (source != null) 'source': source,
       if (sourceFileName != null) 'source_file_name': sourceFileName,
+      if (agentReply != null) 'agent_reply': agentReply,
+      if (agentReplyAtMs != null) 'agent_reply_at_ms': agentReplyAtMs,
+      if (agentReplyTotalTokens != null)
+        'agent_reply_total_tokens': agentReplyTotalTokens,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -622,6 +779,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     Value<String?>? audioPath,
     Value<String>? source,
     Value<String?>? sourceFileName,
+    Value<String?>? agentReply,
+    Value<int?>? agentReplyAtMs,
+    Value<int?>? agentReplyTotalTokens,
     Value<int>? rowid,
   }) {
     return SessionsCompanion(
@@ -636,6 +796,10 @@ class SessionsCompanion extends UpdateCompanion<Session> {
       audioPath: audioPath ?? this.audioPath,
       source: source ?? this.source,
       sourceFileName: sourceFileName ?? this.sourceFileName,
+      agentReply: agentReply ?? this.agentReply,
+      agentReplyAtMs: agentReplyAtMs ?? this.agentReplyAtMs,
+      agentReplyTotalTokens:
+          agentReplyTotalTokens ?? this.agentReplyTotalTokens,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -676,6 +840,17 @@ class SessionsCompanion extends UpdateCompanion<Session> {
     if (sourceFileName.present) {
       map['source_file_name'] = Variable<String>(sourceFileName.value);
     }
+    if (agentReply.present) {
+      map['agent_reply'] = Variable<String>(agentReply.value);
+    }
+    if (agentReplyAtMs.present) {
+      map['agent_reply_at_ms'] = Variable<int>(agentReplyAtMs.value);
+    }
+    if (agentReplyTotalTokens.present) {
+      map['agent_reply_total_tokens'] = Variable<int>(
+        agentReplyTotalTokens.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -696,6 +871,9 @@ class SessionsCompanion extends UpdateCompanion<Session> {
           ..write('audioPath: $audioPath, ')
           ..write('source: $source, ')
           ..write('sourceFileName: $sourceFileName, ')
+          ..write('agentReply: $agentReply, ')
+          ..write('agentReplyAtMs: $agentReplyAtMs, ')
+          ..write('agentReplyTotalTokens: $agentReplyTotalTokens, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1206,12 +1384,24 @@ class $PreferencesTable extends Preferences
       'CHECK ("keep_screen_on" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _agentIdMeta = const VerificationMeta(
+    'agentId',
+  );
+  @override
+  late final GeneratedColumn<String> agentId = GeneratedColumn<String>(
+    'agent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     defaultBatchModel,
     languageHint,
     keepScreenOn,
+    agentId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1257,6 +1447,12 @@ class $PreferencesTable extends Preferences
         ),
       );
     }
+    if (data.containsKey('agent_id')) {
+      context.handle(
+        _agentIdMeta,
+        agentId.isAcceptableOrUnknown(data['agent_id']!, _agentIdMeta),
+      );
+    }
     return context;
   }
 
@@ -1282,6 +1478,10 @@ class $PreferencesTable extends Preferences
         DriftSqlType.bool,
         data['${effectivePrefix}keep_screen_on'],
       ),
+      agentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent_id'],
+      ),
     );
   }
 
@@ -1305,11 +1505,18 @@ class Preference extends DataClass implements Insertable<Preference> {
   /// Whether the display stays on during live sessions (change
   /// 2026-10-29-keep-screen-on-during-sessions), or null for off.
   final bool? keepScreenOn;
+
+  /// The agent selected for send-to-agent (change
+  /// 2026-10-29-send-transcript-to-agent), or null when none is selected.
+  /// An agent ID is a workspace object reference, not a credential, so it
+  /// lives here in plain text — unlike the API key.
+  final String? agentId;
   const Preference({
     required this.id,
     this.defaultBatchModel,
     this.languageHint,
     this.keepScreenOn,
+    this.agentId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1323,6 +1530,9 @@ class Preference extends DataClass implements Insertable<Preference> {
     }
     if (!nullToAbsent || keepScreenOn != null) {
       map['keep_screen_on'] = Variable<bool>(keepScreenOn);
+    }
+    if (!nullToAbsent || agentId != null) {
+      map['agent_id'] = Variable<String>(agentId);
     }
     return map;
   }
@@ -1339,6 +1549,9 @@ class Preference extends DataClass implements Insertable<Preference> {
       keepScreenOn: keepScreenOn == null && nullToAbsent
           ? const Value.absent()
           : Value(keepScreenOn),
+      agentId: agentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentId),
     );
   }
 
@@ -1354,6 +1567,7 @@ class Preference extends DataClass implements Insertable<Preference> {
       ),
       languageHint: serializer.fromJson<String?>(json['languageHint']),
       keepScreenOn: serializer.fromJson<bool?>(json['keepScreenOn']),
+      agentId: serializer.fromJson<String?>(json['agentId']),
     );
   }
   @override
@@ -1364,6 +1578,7 @@ class Preference extends DataClass implements Insertable<Preference> {
       'defaultBatchModel': serializer.toJson<String?>(defaultBatchModel),
       'languageHint': serializer.toJson<String?>(languageHint),
       'keepScreenOn': serializer.toJson<bool?>(keepScreenOn),
+      'agentId': serializer.toJson<String?>(agentId),
     };
   }
 
@@ -1372,6 +1587,7 @@ class Preference extends DataClass implements Insertable<Preference> {
     Value<String?> defaultBatchModel = const Value.absent(),
     Value<String?> languageHint = const Value.absent(),
     Value<bool?> keepScreenOn = const Value.absent(),
+    Value<String?> agentId = const Value.absent(),
   }) => Preference(
     id: id ?? this.id,
     defaultBatchModel: defaultBatchModel.present
@@ -1379,6 +1595,7 @@ class Preference extends DataClass implements Insertable<Preference> {
         : this.defaultBatchModel,
     languageHint: languageHint.present ? languageHint.value : this.languageHint,
     keepScreenOn: keepScreenOn.present ? keepScreenOn.value : this.keepScreenOn,
+    agentId: agentId.present ? agentId.value : this.agentId,
   );
   Preference copyWithCompanion(PreferencesCompanion data) {
     return Preference(
@@ -1392,6 +1609,7 @@ class Preference extends DataClass implements Insertable<Preference> {
       keepScreenOn: data.keepScreenOn.present
           ? data.keepScreenOn.value
           : this.keepScreenOn,
+      agentId: data.agentId.present ? data.agentId.value : this.agentId,
     );
   }
 
@@ -1401,14 +1619,15 @@ class Preference extends DataClass implements Insertable<Preference> {
           ..write('id: $id, ')
           ..write('defaultBatchModel: $defaultBatchModel, ')
           ..write('languageHint: $languageHint, ')
-          ..write('keepScreenOn: $keepScreenOn')
+          ..write('keepScreenOn: $keepScreenOn, ')
+          ..write('agentId: $agentId')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, defaultBatchModel, languageHint, keepScreenOn);
+      Object.hash(id, defaultBatchModel, languageHint, keepScreenOn, agentId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1416,7 +1635,8 @@ class Preference extends DataClass implements Insertable<Preference> {
           other.id == this.id &&
           other.defaultBatchModel == this.defaultBatchModel &&
           other.languageHint == this.languageHint &&
-          other.keepScreenOn == this.keepScreenOn);
+          other.keepScreenOn == this.keepScreenOn &&
+          other.agentId == this.agentId);
 }
 
 class PreferencesCompanion extends UpdateCompanion<Preference> {
@@ -1424,12 +1644,14 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
   final Value<String?> defaultBatchModel;
   final Value<String?> languageHint;
   final Value<bool?> keepScreenOn;
+  final Value<String?> agentId;
   final Value<int> rowid;
   const PreferencesCompanion({
     this.id = const Value.absent(),
     this.defaultBatchModel = const Value.absent(),
     this.languageHint = const Value.absent(),
     this.keepScreenOn = const Value.absent(),
+    this.agentId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PreferencesCompanion.insert({
@@ -1437,6 +1659,7 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
     this.defaultBatchModel = const Value.absent(),
     this.languageHint = const Value.absent(),
     this.keepScreenOn = const Value.absent(),
+    this.agentId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id);
   static Insertable<Preference> custom({
@@ -1444,6 +1667,7 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
     Expression<String>? defaultBatchModel,
     Expression<String>? languageHint,
     Expression<bool>? keepScreenOn,
+    Expression<String>? agentId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1451,6 +1675,7 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
       if (defaultBatchModel != null) 'default_batch_model': defaultBatchModel,
       if (languageHint != null) 'language_hint': languageHint,
       if (keepScreenOn != null) 'keep_screen_on': keepScreenOn,
+      if (agentId != null) 'agent_id': agentId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1460,6 +1685,7 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
     Value<String?>? defaultBatchModel,
     Value<String?>? languageHint,
     Value<bool?>? keepScreenOn,
+    Value<String?>? agentId,
     Value<int>? rowid,
   }) {
     return PreferencesCompanion(
@@ -1467,6 +1693,7 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
       defaultBatchModel: defaultBatchModel ?? this.defaultBatchModel,
       languageHint: languageHint ?? this.languageHint,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
+      agentId: agentId ?? this.agentId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1486,6 +1713,9 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
     if (keepScreenOn.present) {
       map['keep_screen_on'] = Variable<bool>(keepScreenOn.value);
     }
+    if (agentId.present) {
+      map['agent_id'] = Variable<String>(agentId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1499,6 +1729,7 @@ class PreferencesCompanion extends UpdateCompanion<Preference> {
           ..write('defaultBatchModel: $defaultBatchModel, ')
           ..write('languageHint: $languageHint, ')
           ..write('keepScreenOn: $keepScreenOn, ')
+          ..write('agentId: $agentId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1842,6 +2073,9 @@ typedef $$SessionsTableCreateCompanionBuilder = SessionsCompanion Function({
   Value<String?> audioPath,
   Value<String> source,
   Value<String?> sourceFileName,
+  Value<String?> agentReply,
+  Value<int?> agentReplyAtMs,
+  Value<int?> agentReplyTotalTokens,
   Value<int> rowid,
 });
 typedef $$SessionsTableUpdateCompanionBuilder = SessionsCompanion Function({
@@ -1856,6 +2090,9 @@ typedef $$SessionsTableUpdateCompanionBuilder = SessionsCompanion Function({
   Value<String?> audioPath,
   Value<String> source,
   Value<String?> sourceFileName,
+  Value<String?> agentReply,
+  Value<int?> agentReplyAtMs,
+  Value<int?> agentReplyTotalTokens,
   Value<int> rowid,
 });
 
@@ -1944,6 +2181,21 @@ class $$SessionsTableFilterComposer
 
   ColumnFilters<String> get sourceFileName => $composableBuilder(
     column: $table.sourceFileName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get agentReply => $composableBuilder(
+    column: $table.agentReply,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get agentReplyAtMs => $composableBuilder(
+    column: $table.agentReplyAtMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get agentReplyTotalTokens => $composableBuilder(
+    column: $table.agentReplyTotalTokens,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2036,6 +2288,21 @@ class $$SessionsTableOrderingComposer
     column: $table.sourceFileName,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get agentReply => $composableBuilder(
+    column: $table.agentReply,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get agentReplyAtMs => $composableBuilder(
+    column: $table.agentReplyAtMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get agentReplyTotalTokens => $composableBuilder(
+    column: $table.agentReplyTotalTokens,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SessionsTableAnnotationComposer
@@ -2085,6 +2352,21 @@ class $$SessionsTableAnnotationComposer
 
   GeneratedColumn<String> get sourceFileName => $composableBuilder(
     column: $table.sourceFileName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get agentReply => $composableBuilder(
+    column: $table.agentReply,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get agentReplyAtMs => $composableBuilder(
+    column: $table.agentReplyAtMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get agentReplyTotalTokens => $composableBuilder(
+    column: $table.agentReplyTotalTokens,
     builder: (column) => column,
   );
 
@@ -2153,6 +2435,9 @@ class $$SessionsTableTableManager
                 Value<String?> audioPath = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<String?> sourceFileName = const Value.absent(),
+                Value<String?> agentReply = const Value.absent(),
+                Value<int?> agentReplyAtMs = const Value.absent(),
+                Value<int?> agentReplyTotalTokens = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SessionsCompanion(
                 id: id,
@@ -2166,6 +2451,9 @@ class $$SessionsTableTableManager
                 audioPath: audioPath,
                 source: source,
                 sourceFileName: sourceFileName,
+                agentReply: agentReply,
+                agentReplyAtMs: agentReplyAtMs,
+                agentReplyTotalTokens: agentReplyTotalTokens,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2181,6 +2469,9 @@ class $$SessionsTableTableManager
                 Value<String?> audioPath = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<String?> sourceFileName = const Value.absent(),
+                Value<String?> agentReply = const Value.absent(),
+                Value<int?> agentReplyAtMs = const Value.absent(),
+                Value<int?> agentReplyTotalTokens = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SessionsCompanion.insert(
                 id: id,
@@ -2194,6 +2485,9 @@ class $$SessionsTableTableManager
                 audioPath: audioPath,
                 source: source,
                 sourceFileName: sourceFileName,
+                agentReply: agentReply,
+                agentReplyAtMs: agentReplyAtMs,
+                agentReplyTotalTokens: agentReplyTotalTokens,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2595,6 +2889,7 @@ typedef $$PreferencesTableCreateCompanionBuilder =
       Value<String?> defaultBatchModel,
       Value<String?> languageHint,
       Value<bool?> keepScreenOn,
+      Value<String?> agentId,
       Value<int> rowid,
     });
 typedef $$PreferencesTableUpdateCompanionBuilder =
@@ -2603,6 +2898,7 @@ typedef $$PreferencesTableUpdateCompanionBuilder =
       Value<String?> defaultBatchModel,
       Value<String?> languageHint,
       Value<bool?> keepScreenOn,
+      Value<String?> agentId,
       Value<int> rowid,
     });
 
@@ -2632,6 +2928,11 @@ class $$PreferencesTableFilterComposer
 
   ColumnFilters<bool> get keepScreenOn => $composableBuilder(
     column: $table.keepScreenOn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get agentId => $composableBuilder(
+    column: $table.agentId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2664,6 +2965,11 @@ class $$PreferencesTableOrderingComposer
     column: $table.keepScreenOn,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get agentId => $composableBuilder(
+    column: $table.agentId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PreferencesTableAnnotationComposer
@@ -2692,6 +2998,9 @@ class $$PreferencesTableAnnotationComposer
     column: $table.keepScreenOn,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get agentId =>
+      $composableBuilder(column: $table.agentId, builder: (column) => column);
 }
 
 class $$PreferencesTableTableManager
@@ -2729,12 +3038,14 @@ class $$PreferencesTableTableManager
                 Value<String?> defaultBatchModel = const Value.absent(),
                 Value<String?> languageHint = const Value.absent(),
                 Value<bool?> keepScreenOn = const Value.absent(),
+                Value<String?> agentId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PreferencesCompanion(
                 id: id,
                 defaultBatchModel: defaultBatchModel,
                 languageHint: languageHint,
                 keepScreenOn: keepScreenOn,
+                agentId: agentId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2743,12 +3054,14 @@ class $$PreferencesTableTableManager
                 Value<String?> defaultBatchModel = const Value.absent(),
                 Value<String?> languageHint = const Value.absent(),
                 Value<bool?> keepScreenOn = const Value.absent(),
+                Value<String?> agentId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PreferencesCompanion.insert(
                 id: id,
                 defaultBatchModel: defaultBatchModel,
                 languageHint: languageHint,
                 keepScreenOn: keepScreenOn,
+                agentId: agentId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

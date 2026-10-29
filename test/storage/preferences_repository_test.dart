@@ -97,4 +97,46 @@ void main() {
     addTearDown(second.close);
     expect(await DriftPreferencesRepository(second).loadPreferences(), saved);
   });
+
+  test('agent id defaults to null and round-trips when set', () async {
+    expect((await repository.loadPreferences()).agentId, isNull);
+
+    const saved = StoredPreferences(agentId: 'ag_0123');
+    await repository.savePreferences(saved);
+
+    final loaded = await repository.loadPreferences();
+    expect(loaded.agentId, 'ag_0123');
+    expect(loaded, saved);
+  });
+
+  test('clearing the agent id persists the null', () async {
+    await repository.savePreferences(
+      const StoredPreferences(agentId: 'ag_0123'),
+    );
+
+    await repository.savePreferences(const StoredPreferences());
+
+    expect((await repository.loadPreferences()).agentId, isNull);
+  });
+
+  // Plain test() with real file IO — testWidgets + dart:io deadlocks
+  // (project gotcha). A file-backed database proves the agent id survives a
+  // close and reopen.
+  test('agent id persists across a close and reopen', () async {
+    final dir = await Directory.systemTemp.createTemp('voxgale_preferences');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/preferences.sqlite');
+    const saved = StoredPreferences(agentId: 'ag_0123');
+
+    final first = AppDatabase.file(file);
+    await DriftPreferencesRepository(first).savePreferences(saved);
+    await first.close();
+
+    final second = AppDatabase.file(file);
+    addTearDown(second.close);
+    expect(
+      (await DriftPreferencesRepository(second).loadPreferences()).agentId,
+      'ag_0123',
+    );
+  });
 }

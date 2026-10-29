@@ -15,6 +15,7 @@ class StoredPreferences {
     this.defaultBatchModel,
     this.languageHint,
     this.keepScreenOn = false,
+    this.agentId,
   });
 
   /// Default batch model id (Mini or Small Transcribe 3), or null for the
@@ -29,16 +30,23 @@ class StoredPreferences {
   /// false (off).
   final bool keepScreenOn;
 
+  /// The agent selected for send-to-agent (change
+  /// 2026-10-29-send-transcript-to-agent), or null when none is selected.
+  /// Not a credential — stored in plain text.
+  final String? agentId;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is StoredPreferences &&
           defaultBatchModel == other.defaultBatchModel &&
           languageHint == other.languageHint &&
-          keepScreenOn == other.keepScreenOn;
+          keepScreenOn == other.keepScreenOn &&
+          agentId == other.agentId;
 
   @override
-  int get hashCode => Object.hash(defaultBatchModel, languageHint, keepScreenOn);
+  int get hashCode =>
+      Object.hash(defaultBatchModel, languageHint, keepScreenOn, agentId);
 }
 
 /// Persistence for the user's transcription preferences (design P2-D3).
@@ -68,6 +76,7 @@ class DriftPreferencesRepository implements PreferencesRepository {
       defaultBatchModel: row?.defaultBatchModel,
       languageHint: row?.languageHint,
       keepScreenOn: row?.keepScreenOn ?? false,
+      agentId: row?.agentId,
     );
   }
 
@@ -79,6 +88,7 @@ class DriftPreferencesRepository implements PreferencesRepository {
             defaultBatchModel: Value(preferences.defaultBatchModel),
             languageHint: Value(preferences.languageHint),
             keepScreenOn: Value(preferences.keepScreenOn),
+            agentId: Value(preferences.agentId),
           ),
         );
   }

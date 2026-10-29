@@ -197,8 +197,44 @@ class InMemorySessionRepository implements SessionRepository {
         audioPath: session.audioPath,
         source: session.source,
         sourceFileName: session.sourceFileName,
+        agentReply: session.agentReply,
+        agentReplyAtMs: session.agentReplyAtMs,
+        agentReplyTotalTokens: session.agentReplyTotalTokens,
       ),
       segments: segments,
+    );
+  }
+
+  @override
+  Future<void> saveAgentReply(
+    String sessionId, {
+    required String reply,
+    required int atMs,
+    required int totalTokens,
+  }) async {
+    final record = records[sessionId];
+    if (record == null) {
+      throw ArgumentError.value(sessionId, 'sessionId', 'Unknown session id');
+    }
+    final session = record.session;
+    records[sessionId] = StoredSessionRecord(
+      session: StoredSession(
+        id: session.id,
+        startedAt: session.startedAt,
+        durationSeconds: session.durationSeconds,
+        model: session.model,
+        status: session.status,
+        billedAudioSeconds: session.billedAudioSeconds,
+        actualCost: session.actualCost,
+        language: session.language,
+        audioPath: session.audioPath,
+        source: session.source,
+        sourceFileName: session.sourceFileName,
+        agentReply: reply,
+        agentReplyAtMs: atMs,
+        agentReplyTotalTokens: totalTokens,
+      ),
+      segments: record.segments,
     );
   }
 
