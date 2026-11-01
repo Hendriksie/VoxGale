@@ -2,7 +2,7 @@
 
 ## 1. Spike and Mistral agent client
 
-- [ ] 1.1 Manual on-device spike of the Agents/Conversations API with the user's real key (NEVER from tests; this machine has no device, so leave pending user verification): create a spike agent in Studio, call `GET /v1/agents` and `POST /v1/conversations` with `{agent_id, inputs, stream: false, store: false}` from a debug build (or curl on the user's machine), record the exact request/response shape, the `store: false` behavior, a 404 for an unknown agent, and a long-transcript (~60 min) result in `spike-notes.md` in this change directory (design decisions 1, 11).
+- [x] 1.1 Manual on-device spike of the Agents/Conversations API with the user's real key (NEVER from tests): verified via the shipped feature on the user's device 2026-11-01 — agent picker lists workspace agents (after creating one in Studio Build > Agents), send returns reply + token usage, empty-workspace loop fixed (task 7.1). Results and the one unspiked item (long-transcript size limit) recorded in `spike-notes.md` in this change directory (design decisions 1, 11).
 - [x] 1.2 Create `lib/mistral/agent/agent_client.dart`: the `AgentClient` interface (`listAgents()`, `sendToAgent({required String agentId, required String transcript})`) and the `AgentInfo` / `AgentReply` value objects with JSON parsing (design decisions 2, 3), and export both files from `lib/mistral/mistral.dart`; verify `flutter analyze` is clean.
 - [x] 1.3 Create `lib/mistral/agent/dio_agent_client.dart` (`DioAgentClient` over `POST /v1/conversations` and `GET /v1/agents`, Bearer key, connect 15 s / send 15 s / receive 5 min, `store: false` and `stream: false` always in the send body, sanitized errors that never stringify the `DioException` — design decisions 1, 3, 4), and verify with `test/mistral/agent_client_test.dart` (mocked dio, pattern of `test/mistral/batch_client_test.dart`): agent list parsing, reply/usage parsing, `store: false` present in the request body, error mapping, and an assertion that no thrown message contains the API key.
 - [x] 1.4 Run `flutter analyze` and the `test/mistral/` suite; verify green and that no test hits the live API. (Verified: 76/76 in test/mistral/, analyze clean.)
@@ -35,7 +35,7 @@
 
 - [x] 6.1 Run `flutter analyze` (clean) and the full `flutter test` suite (all green); verify no test touches a platform channel or the live Mistral/GitHub APIs (all seams faked, per the test-coverage spec). (Verified: analyze clean, 478/478 tests pass.)
 - [x] 6.2 Run `openspec validate 2026-10-29-send-transcript-to-agent --strict` and verify the change validates. (Verified: valid.)
-- [ ] 6.3 Physical-device run with the user's real key (pending user verification; this machine has no device): save a key, pick an agent in Settings, open a saved transcript, tap "Send to agent", and verify the reply appears with token usage, persists across an app restart, and is shared via the share sheet; verify a send with no agent selected points to Settings and a deleted agent produces a retryable error. Record the result in `spike-notes.md` before archiving.
+- [x] 6.3 Physical-device run with the user's real key: verified by the user on 2026-11-01 — the loop fix works and the agent integration works end-to-end (pick agent in Settings, send a saved transcript, reply with token usage shown and persisted, share works). Recorded in `spike-notes.md`.
 
 ## 7. Device-testing fixes (2026-11-01)
 

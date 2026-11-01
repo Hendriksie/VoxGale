@@ -78,6 +78,27 @@ historical v1 plan lives at [project-plan.md](project-plan.md).
   wake lock for background capture is untouched. Still parked: a dimmed
   keep-screen-on mode (the toggle keeps the current brightness).
 
+## New ideas (2026-11-01, from the maintainer)
+
+- **Send a transcript to Vibe (as a new chat in the Vibe app)** — researched
+  2026-11-01 against docs.mistral.ai: **not possible with the API key alone
+  today.** Vibe Work chats (chat.mistral.ai/work, web + mobile) are
+  account-session state stored for history (explicitly outside Mistral's
+  ZDR) with no public REST API to create or prefill one — the only
+  API-key-accessible chat surface is Studio's Conversations/Agents API
+  (`/v1/conversations`), which is what the shipped agent integration uses,
+  and those conversations do not appear in the Vibe app. Vibe share links
+  share Canvas artifacts only ("your chat messages aren't shared"). No
+  documented deep link / query param opens a new Vibe chat with a prefilled
+  prompt. Skills in Work are invoked by the user with `@`/slash — not
+  attachable programmatically. Possible angles when this matures: (a) share
+  the transcript via the Android share sheet / an intent into the Vibe
+  mobile app if it registers a text share target (needs a device spike);
+  (b) open `https://chat.mistral.ai/work` alongside the exported transcript
+  (paste manually); (c) ask Mistral for a Vibe chat API or prefill deep link.
+  Open question: whether the Vibe mobile app accepts shared text into a new
+  chat.
+
 ## Add yours
 
 <!-- One idea per bullet: what it is, why it would be good, open questions. -->
