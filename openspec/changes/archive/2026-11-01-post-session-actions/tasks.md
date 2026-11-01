@@ -22,7 +22,7 @@ Note: depends on `2026-10-29-send-transcript-to-agent` being archived first
 
 - [x] 4.1 Add an `Added` entry under `## [Unreleased]` in `CHANGELOG.md` ("After a live session, the home screen offers Share and Send to agent for the saved transcript, alongside the speaker-label pass").
 - [x] 4.2 Run `flutter analyze` (clean) and the full `flutter test` suite (all green; no test touches a platform channel or the live APIs), and `openspec validate 2026-11-01-post-session-actions --strict`.
-- [ ] 4.3 Physical-device check (pending user verification; no device on this machine): stop a session, use Share and Send to agent from the post-session card, verify the app opens the saved transcript in History and the reply lands on it; record the result before archiving.
+- [x] 4.3 Physical-device check — verified by the user on a physical device 2026-11-01 ("reviewed the change on my phone and it worked great"): stopped a session, used Share and Send to agent from the post-session card; the app opened the saved transcript in History and the agent reply landed on it. Recorded after the archive, which the user explicitly authorized while the check was pending.
 
 ## Workflow follow-up
 
