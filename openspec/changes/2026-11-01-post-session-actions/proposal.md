@@ -26,8 +26,10 @@ area on the live screen itself, combined with the existing post-session card.
 - `LiveSessionController` gains `shareSavedSession()` / `sendToAgent()` using
   the saved `sessionId`, loading the record from the session repository;
   the send flow reuses the agent client, the Markdown payload, the
-  confirm dialog, and reply persistence from the agent-integration change
-  (the reply is then visible on the transcript in History).
+  confirm dialog, and reply persistence from the agent-integration change.
+  After a successful send the live screen opens the saved transcript's
+  history view, where the reply is visible (user decision 2026-11-01; on
+  failure the live screen stays with the error banner's retry).
 - The app bar is unchanged (already at the M3 three-action-icon limit;
   secondary actions go in context, not the overflow, for discoverability).
 - Spec deltas: ADDED requirements to `live-transcription` (post-session

@@ -6,6 +6,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- After a live session, the home screen offers Share and Send to agent for
+  the saved transcript, alongside the speaker-label pass. After a successful
+  send, the app opens the saved transcript in History, where the agent's
+  reply is shown.
+
 ## [v1.5.0] - 2026-11-01
 
 ### Added

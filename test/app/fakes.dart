@@ -10,6 +10,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:voxgale/app/transcript_export.dart';
 import 'package:voxgale/main.dart';
 import 'package:voxgale/mistral/mistral.dart';
 import 'package:voxgale/session/file_transcription_controller.dart';
@@ -49,9 +50,13 @@ class FakeLiveSessionController extends LiveSessionController {
   final LiveSessionState _state;
 
   /// The action calls, in order ('start', 'pause', 'resume', 'stop',
-  /// 'runDiarizationPass', 'skipDiarizationPass', 'openBatterySettings',
-  /// 'requestMicPermission', 'recheckBatteryExemption').
+  /// 'runDiarizationPass', 'skipDiarizationPass', 'sendToAgent',
+  /// 'openBatterySettings', 'requestMicPermission',
+  /// 'recheckBatteryExemption').
   final List<String> calls = [];
+
+  /// What the `sendToAgent` double returns (whether the send succeeded).
+  bool sendSucceeds = true;
 
   @override
   LiveSessionState build() => _state;
@@ -89,6 +94,12 @@ class FakeLiveSessionController extends LiveSessionController {
   @override
   Future<void> skipDiarizationPass() async {
     calls.add('skipDiarizationPass');
+  }
+
+  @override
+  Future<bool> sendToAgent() async {
+    calls.add('sendToAgent');
+    return sendSucceeds;
   }
 
   @override
@@ -322,14 +333,24 @@ class InMemoryPreferencesRepository implements PreferencesRepository {
 /// Pumps the app shell with the given key store, session controller, and
 /// theme mode. The update tracker is always overridden with fakes (the
 /// client, the version reader, the URL opener, and the persisted update
-/// state): the home screen fires the start check and listens for the
-/// update dialog, and no widget test may hit the live GitHub API or a
-/// platform channel (change 2026-10-29-update-tracker, tasks 6.1-6.2;
-/// design decision 11). Pass the optional fakes to drive the update flow.
+/// state), and the storage repositories default to in-memory fakes: the
+/// home screen fires the start check and listens for the update dialog, and
+/// no widget test may hit the live GitHub API or a platform channel
+/// (change 2026-10-29-update-tracker, tasks 6.1-6.2; design decision 11;
+/// the post-session card reads the selected agent and the saved record).
+/// Pass the optional fakes to drive the update flow or the post-session
+/// actions.
 ProviderScope appWithStore(
   ApiKeyStore store, {
   ThemeMode? themeMode,
   FakeLiveSessionController? sessionController,
+  InMemorySessionRepository? sessionRepository,
+  InMemoryPreferencesRepository? preferencesRepository,
+  Future<void> Function(
+    StoredSessionRecord,
+    MistralConfig, {
+    required bool markdown,
+  })? transcriptExport,
   FakeUpdateCheckClient? updateClient,
   InMemoryUpdateStateRepository? updateStateRepository,
   FakeUrlOpener? urlOpener,
@@ -340,6 +361,14 @@ ProviderScope appWithStore(
         apiKeyStoreProvider.overrideWith((ref) => store),
         if (sessionController != null)
           liveSessionControllerProvider.overrideWith(() => sessionController),
+        sessionRepositoryProvider.overrideWith(
+          (ref) => sessionRepository ?? InMemorySessionRepository(),
+        ),
+        preferencesRepositoryProvider.overrideWith(
+          (ref) => preferencesRepository ?? InMemoryPreferencesRepository(),
+        ),
+        if (transcriptExport != null)
+          transcriptExportProvider.overrideWith((ref) => transcriptExport),
         updateCheckClientProvider
             .overrideWith((ref) => updateClient ?? FakeUpdateCheckClient()),
         appVersionReaderProvider.overrideWith(

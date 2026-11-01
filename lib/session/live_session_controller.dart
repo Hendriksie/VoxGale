@@ -25,6 +25,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../mistral/mistral.dart';
 import '../storage/storage.dart';
+import 'agent_send.dart';
 import 'audio_focus_gateway.dart';
 import 'capture_service.dart';
 import 'diarization_pass.dart';
@@ -150,6 +151,8 @@ class LiveSessionState {
     this.passActualCost,
     this.connection = const ConnectionStatus(),
     this.error = '',
+    this.agentSending = false,
+    this.agentError = '',
     this.missingApiKey = false,
     this.batteryPromptNeeded = false,
     this.pausedByAudioFocus = false,
@@ -214,6 +217,14 @@ class LiveSessionState {
   /// phases, and as a transient warning while the session runs.
   final String error;
 
+  /// Whether the send-to-agent call for the just-saved session is in flight
+  /// (change 2026-11-01-post-session-actions).
+  final bool agentSending;
+
+  /// The send-to-agent failure for the just-saved session; empty when there
+  /// is none.
+  final String agentError;
+
   /// Whether the session failed to start because no API key is saved (the
   /// key's presence is checked; the key itself is never read here).
   final bool missingApiKey;
@@ -230,6 +241,9 @@ class LiveSessionState {
 
   /// Whether [error] carries a message.
   bool get hasError => error.isNotEmpty;
+
+  /// Whether [agentError] carries a message.
+  bool get hasAgentError => agentError.isNotEmpty;
 
   /// Returns a copy with the given fields replaced. Pass an empty string as
   /// [error] to clear it (a null argument keeps the current value).
@@ -250,6 +264,8 @@ class LiveSessionState {
     double? passActualCost,
     ConnectionStatus? connection,
     String? error,
+    bool? agentSending,
+    String? agentError,
     bool? missingApiKey,
     bool? batteryPromptNeeded,
     bool? pausedByAudioFocus,
@@ -271,6 +287,8 @@ class LiveSessionState {
         passActualCost: passActualCost ?? this.passActualCost,
         connection: connection ?? this.connection,
         error: error ?? this.error,
+        agentSending: agentSending ?? this.agentSending,
+        agentError: agentError ?? this.agentError,
         missingApiKey: missingApiKey ?? this.missingApiKey,
         batteryPromptNeeded: batteryPromptNeeded ?? this.batteryPromptNeeded,
         pausedByAudioFocus: pausedByAudioFocus ?? this.pausedByAudioFocus,
@@ -294,6 +312,8 @@ class LiveSessionState {
           passActualCost == other.passActualCost &&
           connection == other.connection &&
           error == other.error &&
+          agentSending == other.agentSending &&
+          agentError == other.agentError &&
           missingApiKey == other.missingApiKey &&
           batteryPromptNeeded == other.batteryPromptNeeded &&
           pausedByAudioFocus == other.pausedByAudioFocus &&
@@ -341,6 +361,8 @@ class LiveSessionState {
         passActualCost,
         connection,
         error,
+        agentSending,
+        agentError,
         missingApiKey,
         batteryPromptNeeded,
         pausedByAudioFocus,
@@ -686,6 +708,58 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       return;
     }
     state = state.copyWith(phase: LiveSessionPhase.done);
+  }
+
+  /// Sends the just-saved session's transcript to the selected agent
+  /// (agent-integration spec, change 2026-11-01-post-session-actions): the
+  /// shared send step — the Markdown export goes out as a one-shot
+  /// conversation and the reply is persisted with the saved session. Returns
+  /// whether the send succeeded; the live screen uses it to open the
+  /// transcript's history view (where the reply is shown) on success. No-op
+  /// (false) when no session is saved, the transcript is empty, or no agent
+  /// is selected. A failure (false) sets the sanitized error with a retry.
+  Future<bool> sendToAgent() async {
+    final sessionId = state.sessionId;
+    if (sessionId == null || state.turns.isEmpty || state.agentSending) {
+      return false;
+    }
+    final agentId = await ref.read(agentIdProvider.future);
+    if (agentId == null || agentId.isEmpty) {
+      return false;
+    }
+    state = state.copyWith(agentSending: true, agentError: '');
+    try {
+      await sendSessionToAgent(
+        repository: ref.read(sessionRepositoryProvider),
+        client: await ref.read(agentClientProvider.future),
+        config: ref.read(mistralConfigProvider),
+        sessionId: sessionId,
+        agentId: agentId,
+      );
+      if (!ref.mounted) {
+        return false;
+      }
+      // The session row changed (the stored reply) — the history list must
+      // re-read it.
+      ref.invalidate(historyListProvider);
+      state = state.copyWith(agentSending: false);
+      return true;
+    } on MistralApiException catch (e) {
+      if (!ref.mounted) {
+        return false;
+      }
+      state = state.copyWith(agentSending: false, agentError: e.message);
+      return false;
+    } catch (e) {
+      if (!ref.mounted) {
+        return false;
+      }
+      state = state.copyWith(
+        agentSending: false,
+        agentError: 'The agent call failed: $e',
+      );
+      return false;
+    }
   }
 
   /// Opens the system battery-optimization settings (the battery-prompt

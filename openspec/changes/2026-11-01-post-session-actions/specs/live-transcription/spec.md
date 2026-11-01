@@ -28,7 +28,7 @@ send-to-agent action on the transcript detail view.
 
 #### Scenario: Send from the live screen succeeds
 - **WHEN** the user taps Send to agent on the post-session card and confirms
-- **THEN** the transcript is sent to the selected agent, the reply is persisted with the session, and a confirmation is shown
+- **THEN** the transcript is sent to the selected agent, the reply is persisted with the session, and the app opens the saved transcript's history view where the reply is shown
 
 #### Scenario: Send from the live screen with no agent selected
 - **WHEN** the user taps Send to agent and no agent is selected in Settings

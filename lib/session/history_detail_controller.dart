@@ -11,9 +11,9 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../app/transcript_export.dart';
 import '../mistral/mistral.dart';
 import '../storage/storage.dart';
+import 'agent_send.dart';
 import 'session_providers.dart';
 
 /// The history detail state for one session (design P2-D6/D7).
@@ -212,10 +212,11 @@ class HistoryDetailController extends Notifier<HistoryDetailState> {
   }
 
   /// Sends the transcript to the selected agent (agent-integration spec,
-  /// change 2026-10-29-send-transcript-to-agent): the Markdown export goes
-  /// out as a one-shot conversation (the client always sends store=false),
-  /// the reply is persisted with the session and shown. A failure keeps the
-  /// previous reply and shows the sanitized error with a retry.
+  /// change 2026-10-29-send-transcript-to-agent): the shared send step —
+  /// the Markdown export goes out as a one-shot conversation (the client
+  /// always sends store=false), the reply is persisted with the session and
+  /// shown. A failure keeps the previous reply and shows the sanitized error
+  /// with a retry.
   Future<void> sendToAgent() async {
     final record = state.record;
     if (record == null || record.segments.isEmpty || state.agentSending) {
@@ -227,22 +228,13 @@ class HistoryDetailController extends Notifier<HistoryDetailState> {
     }
     state = state.copyWith(agentSending: true, agentError: '');
     try {
-      final client = await ref.read(agentClientProvider.future);
-      final payload = transcriptToMarkdown(
-        record.session,
-        record.segments,
-        ref.read(mistralConfigProvider),
-      );
-      final reply = await client.sendToAgent(
+      await sendSessionToAgent(
+        repository: ref.read(sessionRepositoryProvider),
+        client: await ref.read(agentClientProvider.future),
+        config: ref.read(mistralConfigProvider),
+        sessionId: record.session.id,
         agentId: agentId,
-        transcript: payload,
       );
-      await ref.read(sessionRepositoryProvider).saveAgentReply(
-            record.session.id,
-            reply: reply.text,
-            atMs: DateTime.now().millisecondsSinceEpoch,
-            totalTokens: reply.totalTokens ?? 0,
-          );
       if (!ref.mounted) {
         return;
       }

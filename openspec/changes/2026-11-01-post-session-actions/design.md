@@ -91,6 +91,12 @@ task just completed, because discoverability beats tidiness for follow-ups.
 
 ## Open Questions
 
-- Whether the reply should also be previewed on the live screen after sending
-  (currently it lives on the history detail view) — deferred; the snackbar
-  confirmation plus History covers v1.
+- Resolved 2026-11-01 (user decision, after device testing): whether the user
+  should see the agent's reply right after sending from the live screen. On a
+  successful send the live screen now **navigates to the saved transcript's
+  history detail view**, where the persisted reply card is shown (this also
+  satisfies the spec scenario's "a confirmation is shown" — v1's spinner-only
+  success was invisible). On failure the screen stays with the
+  `ErrorBanner` retry. No reply preview is rendered on the live screen itself;
+  the pass re-offer is not lost either — the history detail re-offers it for a
+  provisional session with retained audio.

@@ -23,9 +23,11 @@ import '../update/update_providers.dart';
 import 'error_states.dart';
 import 'file_transcription_screen.dart';
 import 'formatters.dart';
+import 'history_detail_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
+import 'transcript_share_sheet.dart';
 import 'transcript_widgets.dart';
 
 /// The live session screen: the app's home (design P1-D6). The Phase-0 spike
@@ -150,6 +152,12 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
                 kind: classifyFailure(state.error),
                 message: state.error,
               ),
+            if (state.hasAgentError)
+              ErrorBanner(
+                kind: classifyFailure(state.agentError),
+                message: state.agentError,
+                onRemedy: () => controller.sendToAgent(),
+              ),
             Expanded(
               child: state.phase == LiveSessionPhase.error
                   ? _FatalErrorView(state: state, controller: controller)
@@ -160,7 +168,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
                       emptyMessage: _emptyTranscriptMessage(state.phase),
                     ),
             ),
-            _PassSection(state: state, controller: controller),
+            _PostSessionCard(state: state, controller: controller),
             _ControlsBar(state: state, controller: controller),
           ],
         ),
@@ -442,18 +450,22 @@ class _BatteryPromptBannerState extends State<_BatteryPromptBanner> {
   }
 }
 
-/// The post-session pass section (design P1-D5, task 5.3): the offer with its
-/// estimated cost and the run/skip actions; the running progress; the failure
-/// error with a retry. In the done phase the pass's actual usage shows in the
-/// status row, next to the realtime actuals.
-class _PassSection extends StatelessWidget {
-  const _PassSection({required this.state, required this.controller});
+/// The post-session card (change 2026-11-01-post-session-actions, design
+/// decision 1): shown in the `done` and `passOffered` phases above the
+/// controls bar. In `passOffered` it combines the speaker-label pass offer
+/// (Run stays the single primary action) with a secondary actions row (Share,
+/// Send to agent); in `done` it shows "Session saved" with the actions row
+/// (Send to agent primary when an agent is selected, Share secondary). The
+/// pass-running and pass-failed states are unchanged; while a session runs
+/// no post-session actions are shown.
+class _PostSessionCard extends ConsumerWidget {
+  const _PostSessionCard({required this.state, required this.controller});
 
   final LiveSessionState state;
   final LiveSessionController controller;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     switch (state.phase) {
       case LiveSessionPhase.passOffered:
@@ -488,6 +500,36 @@ class _PassSection extends StatelessWidget {
                     child: const Text('Run'),
                   ),
                 ],
+              ),
+              const SizedBox(height: 4),
+              _ActionsRow(
+                state: state,
+                controller: controller,
+                sendFilled: false,
+                shareFilled: false,
+              ),
+            ],
+          ),
+        );
+      case LiveSessionPhase.done:
+        // Send to agent is the primary action when an agent is selected;
+        // otherwise Share takes the primary slot and Send points to Settings
+        // (the shared flow's snackbar).
+        final hasAgent = switch (ref.watch(agentIdProvider)) {
+          AsyncData(:final value) => (value ?? '').isNotEmpty,
+          _ => false,
+        };
+        return _PassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Session saved', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              _ActionsRow(
+                state: state,
+                controller: controller,
+                sendFilled: hasAgent,
+                shareFilled: !hasAgent,
               ),
             ],
           ),
@@ -547,10 +589,122 @@ class _PassSection extends StatelessWidget {
           LiveSessionPhase.paused ||
           LiveSessionPhase.stopping ||
           LiveSessionPhase.finalizing ||
-          LiveSessionPhase.done ||
           LiveSessionPhase.error:
         return const SizedBox.shrink();
     }
+  }
+}
+
+/// The post-session card's actions row (Share, Send to agent — change
+/// 2026-11-01-post-session-actions, design decision 1): Share opens the
+/// shared export sheet for the saved record; Send to agent runs the shared
+/// confirm flow and the controller's send. While a send is in flight the
+/// send action shows a spinner; with no agent selected the tap shows the
+/// shared flow's Settings snackbar. [sendFilled]/[shareFilled] pick which
+/// action renders as the filled primary button (in `passOffered` both are
+/// secondary text buttons).
+class _ActionsRow extends ConsumerWidget {
+  const _ActionsRow({
+    required this.state,
+    required this.controller,
+    required this.sendFilled,
+    required this.shareFilled,
+  });
+
+  final LiveSessionState state;
+  final LiveSessionController controller;
+
+  /// Whether Send to agent renders as the filled (primary) action.
+  final bool sendFilled;
+
+  /// Whether Share renders as the filled (primary) action.
+  final bool shareFilled;
+
+  /// Opens the shared export sheet for the saved record.
+  Future<void> _share(BuildContext context, WidgetRef ref) async {
+    final sessionId = state.sessionId;
+    if (sessionId == null) {
+      return;
+    }
+    final record =
+        await ref.read(sessionRepositoryProvider).loadSession(sessionId);
+    if (record == null || !context.mounted) {
+      return;
+    }
+    await showTranscriptExportSheet(
+      context,
+      ref,
+      record,
+      ref.read(mistralConfigProvider),
+    );
+  }
+
+  /// Runs the shared send-to-agent prompt flow (Settings snackbar when no
+  /// agent is selected, otherwise the confirm dialog) and then the
+  /// controller's send. On success the app opens the saved transcript's
+  /// history view, where the persisted reply is shown (user decision
+  /// 2026-11-01; design open question resolved); on failure it stays here
+  /// with the error banner's retry.
+  Future<void> _send(BuildContext context, WidgetRef ref) async {
+    if (state.agentSending) {
+      return;
+    }
+    if (await confirmSendToAgent(context, ref) && context.mounted) {
+      final sent = await controller.sendToAgent();
+      final sessionId = state.sessionId;
+      if (sent && context.mounted && sessionId != null) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => HistoryDetailScreen(sessionId: sessionId),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sending = state.agentSending;
+    final sendChild = sending
+        ? const SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          )
+        : const Text('Send to agent');
+    final sendButton = sendFilled
+        ? FilledButton(
+            key: const Key('sendToAgentAction'),
+            style: FilledButton.styleFrom(
+              backgroundColor: mistralOrange,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: sending ? null : () => _send(context, ref),
+            child: sendChild,
+          )
+        : TextButton(
+            key: const Key('sendToAgentAction'),
+            onPressed: sending ? null : () => _send(context, ref),
+            child: sendChild,
+          );
+    final shareButton = shareFilled
+        ? FilledButton(
+            key: const Key('shareAction'),
+            style: FilledButton.styleFrom(
+              backgroundColor: mistralOrange,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () => _share(context, ref),
+            child: const Text('Share'),
+          )
+        : TextButton(
+            key: const Key('shareAction'),
+            onPressed: () => _share(context, ref),
+            child: const Text('Share'),
+          );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [shareButton, const SizedBox(width: 8), sendButton],
+    );
   }
 }
 

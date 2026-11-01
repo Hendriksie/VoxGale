@@ -11,10 +11,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voxgale/app/error_states.dart';
+import 'package:voxgale/app/history_detail_screen.dart';
 import 'package:voxgale/app/live_session_screen.dart';
 import 'package:voxgale/app/transcript_widgets.dart';
+import 'package:voxgale/mistral/mistral.dart';
 import 'package:voxgale/session/live_session_controller.dart';
 import 'package:voxgale/session/session_models.dart';
+import 'package:voxgale/storage/storage.dart';
 
 import 'fakes.dart';
 
@@ -634,5 +637,258 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     }
+  });
+
+  group('post-session card (change 2026-11-01-post-session-actions)', () {
+    /// The export action test double: records its calls.
+    final exportCalls = <({StoredSessionRecord record, bool markdown})>[];
+
+    /// The saved record the Share action loads for session-1 (with a stored
+    /// agent reply, so the history detail view shows the reply card).
+    final savedRecord = StoredSessionRecord(
+      session: StoredSession(
+        id: 'session-1',
+        startedAt: DateTime(2026, 11, 1, 10, 0),
+        durationSeconds: 65,
+        model: MistralConfig.defaults.realtimeModel,
+        status: SessionStatus.provisional,
+        agentReply: 'Three action items.',
+        agentReplyAtMs: DateTime(2026, 11, 1, 10, 5).millisecondsSinceEpoch,
+        agentReplyTotalTokens: 1285,
+      ),
+      segments: const [
+        StoredSegment(sessionId: 'session-1', order: 0, text: 'Hello world'),
+      ],
+    );
+
+    LiveSessionState doneState({bool agentSending = false, String agentError = ''}) =>
+        LiveSessionState(
+          phase: LiveSessionPhase.done,
+          sessionId: 'session-1',
+          durationSeconds: 65,
+          realtimeBilledSeconds: 61,
+          realtimeActualCost: 0.011,
+          turns: const [TranscriptTurn(text: 'Hello world', isProvisional: false)],
+          agentSending: agentSending,
+          agentError: agentError,
+        );
+
+    LiveSessionState passOfferedState() => LiveSessionState(
+          phase: LiveSessionPhase.passOffered,
+          sessionId: 'session-1',
+          durationSeconds: 65,
+          realtimeBilledSeconds: 61,
+          realtimeActualCost: 0.011,
+          passEstimatedCost: 0.012,
+          turns: const [TranscriptTurn(text: 'Hello world')],
+        );
+
+    /// Pumps the home screen in a post-session phase, with the in-memory
+    /// repository holding the saved record and the selected agent configured.
+    Future<FakeLiveSessionController> pumpCard(
+      WidgetTester tester,
+      LiveSessionState state, {
+      String? agentId = 'ag_1',
+      FakeLiveSessionController? controller,
+    }) async {
+      exportCalls.clear();
+      final repository = InMemorySessionRepository()..add(savedRecord.session, savedRecord.segments);
+      final preferences = InMemoryPreferencesRepository()
+        ..stored = StoredPreferences(agentId: agentId);
+      final sessionController = controller ?? FakeLiveSessionController(state);
+      await tester.pumpWidget(appWithStore(
+        FakeApiKeyStore(),
+        sessionController: sessionController,
+        sessionRepository: repository,
+        preferencesRepository: preferences,
+        transcriptExport: (record, _, {required markdown}) async {
+          exportCalls.add((record: record, markdown: markdown));
+        },
+      ));
+      await tester.pump();
+      await tester.pump();
+      return sessionController;
+    }
+
+    testWidgets('done: the card shows Session saved with Share and Send to '
+        'agent, Send primary when an agent is selected', (tester) async {
+      await pumpCard(tester, doneState());
+
+      expect(find.text('Session saved'), findsOneWidget);
+      expect(find.text('Share'), findsOneWidget);
+      expect(find.text('Send to agent'), findsOneWidget);
+      // Send to agent is the filled primary action; Share is secondary.
+      expect(
+        find.ancestor(of: find.text('Send to agent'), matching: find.byType(FilledButton)),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(of: find.text('Share'), matching: find.byType(TextButton)),
+        findsOneWidget,
+      );
+      // No pass offer remains in done.
+      expect(find.text('Add speaker labels'), findsNothing);
+    });
+
+    testWidgets('done without a selected agent: Share is primary and Send is '
+        'secondary', (tester) async {
+      await pumpCard(tester, doneState(), agentId: null);
+
+      expect(
+        find.ancestor(of: find.text('Share'), matching: find.byType(FilledButton)),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(of: find.text('Send to agent'), matching: find.byType(TextButton)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('passOffered: the pass offer stays primary (Run/Skip) with '
+        'Share and Send to agent as secondary text buttons', (tester) async {
+      await pumpCard(tester, passOfferedState());
+
+      expect(find.text('Add speaker labels'), findsOneWidget);
+      expect(
+        find.ancestor(of: find.text('Run'), matching: find.byType(FilledButton)),
+        findsOneWidget,
+      );
+      expect(find.text('Skip'), findsOneWidget);
+      expect(find.text('Share'), findsOneWidget);
+      expect(find.text('Send to agent'), findsOneWidget);
+      // Both actions are secondary text buttons.
+      expect(
+        find.ancestor(of: find.text('Share'), matching: find.byType(TextButton)),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(of: find.text('Send to agent'), matching: find.byType(TextButton)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('absent while a session is active or paused', (tester) async {
+      await pumpCard(tester, activeState());
+
+      expect(find.text('Session saved'), findsNothing);
+      expect(find.text('Share'), findsNothing);
+      expect(find.text('Send to agent'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      await pumpCard(tester, const LiveSessionState(phase: LiveSessionPhase.paused));
+
+      expect(find.text('Session saved'), findsNothing);
+      expect(find.text('Share'), findsNothing);
+      expect(find.text('Send to agent'), findsNothing);
+    });
+
+    testWidgets('send asks for confirmation and calls the controller',
+        (tester) async {
+      final controller = await pumpCard(tester, doneState());
+
+      await tester.tap(find.text('Send to agent'));
+      await tester.pumpAndSettle();
+      expect(find.text('Send to agent?'), findsOneWidget);
+
+      await tester.tap(find.text('Send'));
+      await tester.pumpAndSettle();
+
+      expect(controller.calls, ['sendToAgent']);
+    });
+
+    testWidgets('send with no agent selected shows the Settings snackbar and '
+        'does not send', (tester) async {
+      final controller = await pumpCard(tester, doneState(), agentId: null);
+
+      await tester.tap(find.text('Send to agent'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Select an agent in Settings first.'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(controller.calls, isEmpty);
+    });
+
+    testWidgets('share opens the shared export sheet for the saved record',
+        (tester) async {
+      await pumpCard(tester, doneState());
+
+      await tester.tap(find.text('Share'));
+      await tester.pumpAndSettle();
+      expect(find.text('Plain text'), findsOneWidget);
+      expect(find.text('Markdown'), findsOneWidget);
+
+      await tester.tap(find.text('Markdown'));
+      await tester.pumpAndSettle();
+
+      expect(exportCalls, hasLength(1));
+      expect(exportCalls.single.markdown, isTrue);
+      expect(exportCalls.single.record.session.id, 'session-1');
+    });
+
+    testWidgets('a send in flight shows a spinner and disables the send '
+        'action', (tester) async {
+      await pumpCard(tester, doneState(agentSending: true));
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      final sendButton =
+          tester.widget<FilledButton>(find.byKey(const Key('sendToAgentAction')));
+      expect(sendButton.onPressed, isNull);
+    });
+
+    testWidgets('an agent failure shows the shared error banner whose retry '
+        're-sends', (tester) async {
+      final controller = await pumpCard(
+        tester,
+        doneState(agentError: 'quota exceeded'),
+      );
+
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.text('quota exceeded'), findsOneWidget);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+
+      expect(controller.calls, ['sendToAgent']);
+    });
+
+    testWidgets('a successful send opens the saved transcript in History '
+        'with the reply visible', (tester) async {
+      final controller = await pumpCard(tester, doneState());
+
+      await tester.tap(find.text('Send to agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send'));
+      await tester.pumpAndSettle();
+
+      expect(controller.calls, ['sendToAgent']);
+      // The app navigated to the saved transcript's history detail view,
+      // where the persisted reply card is shown.
+      expect(find.byType(HistoryDetailScreen), findsOneWidget);
+      expect(find.text('Agent reply'), findsOneWidget);
+      expect(find.text('Three action items.'), findsOneWidget);
+    });
+
+    testWidgets('a failed send stays on the live screen with the error '
+        'banner', (tester) async {
+      final controller = FakeLiveSessionController(
+        doneState(agentError: 'quota exceeded'),
+      )..sendSucceeds = false;
+      await pumpCard(
+        tester,
+        doneState(agentError: 'quota exceeded'),
+        controller: controller,
+      );
+
+      await tester.tap(find.text('Send to agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send'));
+      await tester.pumpAndSettle();
+
+      expect(controller.calls, ['sendToAgent']);
+      expect(find.byType(HistoryDetailScreen), findsNothing);
+      expect(find.byType(ErrorBanner), findsOneWidget);
+      expect(find.text('quota exceeded'), findsOneWidget);
+    });
   });
 }

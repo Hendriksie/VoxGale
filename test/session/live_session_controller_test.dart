@@ -23,6 +23,8 @@ class MockSessionRepository extends Mock implements SessionRepository {}
 class MockBatchTranscriptionClient extends Mock
     implements BatchTranscriptionClient {}
 
+class MockAgentClient extends Mock implements AgentClient {}
+
 class FakeApiKeyStore implements ApiKeyStore {
   String? key;
 
@@ -153,6 +155,7 @@ void main() {
   late MockForegroundTaskGateway gateway;
   late MockSessionRepository repository;
   late MockBatchTranscriptionClient batchClient;
+  late MockAgentClient agentClient;
   late FakeApiKeyStore apiKeyStore;
   late FakeSessionClock clock;
   late FakeAudioFocusGateway audioFocus;
@@ -313,6 +316,7 @@ void main() {
     gateway = MockForegroundTaskGateway();
     repository = MockSessionRepository();
     batchClient = MockBatchTranscriptionClient();
+    agentClient = MockAgentClient();
     apiKeyStore = FakeApiKeyStore()..key = 'test-key';
     clock = FakeSessionClock();
     audioFocus = FakeAudioFocusGateway();
@@ -332,6 +336,7 @@ void main() {
         mistralConfigProvider.overrideWith((ref) => MistralConfig.defaults),
         apiKeyStoreProvider.overrideWith((ref) => apiKeyStore),
         batchTranscriptionClientProvider.overrideWith((ref) async => batchClient),
+        agentClientProvider.overrideWith((ref) async => agentClient),
         sessionClockProvider.overrideWith((ref) => clock),
         foregroundTaskGatewayProvider.overrideWith((ref) => gateway),
         audioFocusGatewayProvider.overrideWith((ref) => audioFocus),
@@ -1330,6 +1335,196 @@ void main() {
       // The release in teardown is swallowed the same way.
       await finalizeToPassOffered();
       expect(state().phase, LiveSessionPhase.passOffered);
+    });
+  });
+
+  group('sendToAgent (agent-integration spec, change '
+      '2026-11-01-post-session-actions)', () {
+    const reply = AgentReply(
+      text: 'Three action items.',
+      promptTokens: 1200,
+      completionTokens: 85,
+      totalTokens: 1285,
+    );
+
+    /// The in-memory record store backing the mocked repository's
+    /// loadSession/saveAgentReply for these tests.
+    late Map<String, StoredSessionRecord> records;
+
+    StoredSessionRecord savedRecord(String id) => StoredSessionRecord(
+          session: StoredSession(
+            id: id,
+            startedAt: DateTime(2026, 11, 1, 10, 0),
+            durationSeconds: 65,
+            model: 'voxtral-mini-transcribe-realtime-3-0',
+            status: SessionStatus.provisional,
+            billedAudioSeconds: 61,
+            actualCost: 0.011,
+            language: 'en',
+          ),
+          segments: const [
+            StoredSegment(sessionId: 'session-1', order: 0, text: 'Hello world'),
+          ],
+        );
+
+    /// Brings the controller to the done phase with the saved session, its
+    /// transcript, and the record in the in-memory store.
+    void arrangeSavedSession({String? agentId = 'ag_1'}) {
+      records = {'session-1': savedRecord('session-1')};
+      when(() => repository.loadSession(any())).thenAnswer(
+        (invocation) async =>
+            records[invocation.positionalArguments[0] as String],
+      );
+      when(
+        () => repository.saveAgentReply(
+          any(),
+          reply: any(named: 'reply'),
+          atMs: any(named: 'atMs'),
+          totalTokens: any(named: 'totalTokens'),
+        ),
+      ).thenAnswer((invocation) async {
+        final id = invocation.positionalArguments[0] as String;
+        final record = records[id];
+        if (record == null) {
+          return;
+        }
+        final session = record.session;
+        records[id] = StoredSessionRecord(
+          session: StoredSession(
+            id: session.id,
+            startedAt: session.startedAt,
+            durationSeconds: session.durationSeconds,
+            model: session.model,
+            status: session.status,
+            billedAudioSeconds: session.billedAudioSeconds,
+            actualCost: session.actualCost,
+            language: session.language,
+            audioPath: session.audioPath,
+            source: session.source,
+            sourceFileName: session.sourceFileName,
+            agentReply: invocation.namedArguments[#reply] as String,
+            agentReplyAtMs: invocation.namedArguments[#atMs] as int,
+            agentReplyTotalTokens:
+                invocation.namedArguments[#totalTokens] as int,
+          ),
+          segments: record.segments,
+        );
+      });
+      preferences.stored = StoredPreferences(agentId: agentId);
+      controller().state = const LiveSessionState(
+        phase: LiveSessionPhase.done,
+        sessionId: 'session-1',
+        durationSeconds: 65,
+        turns: [TranscriptTurn(text: 'Hello world', isProvisional: false)],
+      );
+    }
+
+    test('sends the Markdown export and persists the reply for the saved '
+        'session', () async {
+      arrangeSavedSession();
+      when(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      ).thenAnswer((_) async => reply);
+
+      expect(await controller().sendToAgent(), isTrue);
+
+      // The payload is the saved transcript's Markdown export.
+      final call = verify(
+        () => agentClient.sendToAgent(
+          agentId: captureAny(named: 'agentId'),
+          transcript: captureAny(named: 'transcript'),
+        ),
+      ).captured;
+      expect(call[0], 'ag_1');
+      final payload = call[1] as String;
+      expect(payload, contains('# Transcript'));
+      expect(payload, contains('Hello world'));
+
+      // The reply is persisted with the saved session.
+      final stored = records['session-1']!;
+      expect(stored.session.agentReply, 'Three action items.');
+      expect(stored.session.agentReplyTotalTokens, 1285);
+      expect(stored.session.agentReplyAtMs, isNotNull);
+
+      expect(state().agentSending, isFalse);
+      expect(state().hasAgentError, isFalse);
+    });
+
+    test('an API failure sets the sanitized error and persists nothing',
+        () async {
+      arrangeSavedSession();
+      when(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      ).thenThrow(MistralApiException('quota exceeded'));
+
+      expect(await controller().sendToAgent(), isFalse);
+
+      expect(state().agentSending, isFalse);
+      expect(state().hasAgentError, isTrue);
+      expect(state().agentError, 'quota exceeded');
+      verifyNever(
+        () => repository.saveAgentReply(
+          any(),
+          reply: any(named: 'reply'),
+          atMs: any(named: 'atMs'),
+          totalTokens: any(named: 'totalTokens'),
+        ),
+      );
+      expect(records['session-1']!.session.agentReply, isNull);
+    });
+
+    test('is a no-op (false) when no agent is selected', () async {
+      arrangeSavedSession(agentId: null);
+
+      expect(await controller().sendToAgent(), isFalse);
+
+      verifyNever(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      );
+      expect(state().agentSending, isFalse);
+      expect(state().hasAgentError, isFalse);
+    });
+
+    test('is a no-op (false) when the transcript is empty', () async {
+      arrangeSavedSession();
+      controller().state = state().copyWith(turns: const []);
+
+      expect(await controller().sendToAgent(), isFalse);
+
+      verifyNever(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      );
+    });
+
+    test('is a no-op (false) when no session is saved', () async {
+      arrangeSavedSession();
+      // copyWith keeps the current sessionId on null — build a fresh state.
+      controller().state = const LiveSessionState(
+        phase: LiveSessionPhase.done,
+        turns: [TranscriptTurn(text: 'Hello world', isProvisional: false)],
+      );
+
+      expect(await controller().sendToAgent(), isFalse);
+
+      verifyNever(
+        () => agentClient.sendToAgent(
+          agentId: any(named: 'agentId'),
+          transcript: any(named: 'transcript'),
+        ),
+      );
+      verifyNever(() => repository.loadSession(any()));
     });
   });
 }

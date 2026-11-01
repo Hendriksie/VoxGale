@@ -18,6 +18,7 @@ import 'error_states.dart';
 import 'formatters.dart';
 import 'theme.dart';
 import 'transcript_export.dart';
+import 'transcript_share_sheet.dart';
 import 'transcript_widgets.dart';
 
 /// The history detail screen: one saved transcript (transcript-history and
@@ -58,7 +59,12 @@ class HistoryDetailScreen extends ConsumerWidget {
             icon: const Icon(Icons.ios_share_outlined),
             onPressed: state.record == null
                 ? null
-                : () => _showExportSheet(context, ref, state.record!, config),
+                : () => showTranscriptExportSheet(
+                    context,
+                    ref,
+                    state.record!,
+                    config,
+                  ),
           ),
           IconButton(
             tooltip: 'Delete',
@@ -93,98 +99,19 @@ class HistoryDetailScreen extends ConsumerWidget {
   }
 
   /// The send-to-agent action (agent-integration spec, change
-  /// 2026-10-29-send-transcript-to-agent): without a selected agent the user
-  /// is pointed to Settings; otherwise a confirm dialog states the data flow
-  /// (one-shot conversation, nothing stored server-side, billed per token,
-  /// the agent runs with its own tools) before the send runs.
+  /// 2026-10-29-send-transcript-to-agent): the shared prompt flow — without
+  /// a selected agent the user is pointed to Settings, otherwise the
+  /// confirm dialog states the data flow (one-shot conversation, nothing
+  /// stored server-side, billed per token, the agent runs with its own
+  /// tools) — before the send runs.
   Future<void> _sendToAgent(
     BuildContext context,
     WidgetRef ref,
     HistoryDetailController controller,
     HistoryDetailState state,
   ) async {
-    final agentId = await ref.read(agentIdProvider.future);
-    if (!context.mounted) {
-      return;
-    }
-    if (agentId == null || agentId.isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Select an agent in Settings first.'),
-          ),
-        );
-      }
-      return;
-    }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Send to agent?'),
-        content: const Text(
-          'The full transcript is sent to your agent as a one-shot '
-          'conversation; no conversation history is kept. The call is '
-          'billed per token under your API key, and the agent runs with its '
-          'own tools.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Send'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) {
+    if (await confirmSendToAgent(context, ref) && context.mounted) {
       await controller.sendToAgent();
-    }
-  }
-
-  Future<void> _showExportSheet(
-    BuildContext context,
-    WidgetRef ref,
-    StoredSessionRecord record,
-    MistralConfig config,
-  ) async {
-    final markdown = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.text_snippet_outlined),
-              title: const Text('Plain text'),
-              onTap: () => Navigator.of(context).pop(false),
-            ),
-            ListTile(
-              leading: const Icon(Icons.code),
-              title: const Text('Markdown'),
-              onTap: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (markdown == null || !context.mounted) {
-      return;
-    }
-    try {
-      await ref.read(transcriptExportProvider)(
-        record,
-        config,
-        markdown: markdown,
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not export the transcript: $e')),
-        );
-      }
     }
   }
 
