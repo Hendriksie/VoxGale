@@ -245,10 +245,11 @@ class _AgentSection extends ConsumerWidget {
     // method is not allowed). A failed load stays visible with its retry
     // action; the guard excludes it.
     ref.listen<SettingsState>(settingsControllerProvider, (previous, next) {
+      // agentsLoaded (not agents.isEmpty) is the guard: an empty workspace
+      // must not re-trigger the load on every state change.
       if (next.loaded &&
           next.keySaved &&
-          next.agents.isEmpty &&
-          !next.agentLoading &&
+          !next.agentsLoaded &&
           !next.hasAgentError) {
         unawaited(controller.loadAgents());
       }

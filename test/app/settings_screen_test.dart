@@ -597,6 +597,23 @@ void main() {
       expect(preferences.stored.agentId, 'ag_1');
     });
 
+    testWidgets('an empty workspace shows the no-agents note and loads '
+        'exactly once (no loading loop — device bug 2026-11-01)',
+        (tester) async {
+      apiKeyStore.key = 'sk-secret';
+      when(() => agentClient.listAgents()).thenAnswer((_) async => const []);
+      await pumpSettings(tester);
+      await waitLoaded(tester);
+      // Let any would-be re-load fire.
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      verify(() => agentClient.listAgents()).called(1);
+      await reveal(tester, find.textContaining('No agents found'));
+      expect(find.textContaining('No agents found in your workspace'),
+          findsOneWidget);
+    });
+
     testWidgets('a failed list load shows the error banner and the retry '
         'reloads', (tester) async {
       apiKeyStore.key = 'sk-secret';

@@ -28,6 +28,7 @@ class SettingsState {
     this.agents = const [],
     this.agentLoading = false,
     this.agentError = '',
+    this.agentsLoaded = false,
     this.selectedAgentId,
   });
 
@@ -66,6 +67,12 @@ class SettingsState {
   /// The agent-list load error; empty when there is none.
   final String agentError;
 
+  /// Whether an agent-list load has succeeded — even an empty one. Without
+  /// this, a workspace with zero agents loops the load (the list stays empty,
+  /// so "not loaded yet" never becomes false — found in device testing
+  /// 2026-11-01).
+  final bool agentsLoaded;
+
   /// The selected agent's id, or null when none is selected.
   final String? selectedAgentId;
 
@@ -91,6 +98,7 @@ class SettingsState {
     List<AgentInfo>? agents,
     bool? agentLoading,
     String? agentError,
+    bool? agentsLoaded,
     Object? selectedAgentId = _keep,
   }) =>
       SettingsState(
@@ -109,6 +117,7 @@ class SettingsState {
         agents: agents ?? this.agents,
         agentLoading: agentLoading ?? this.agentLoading,
         agentError: agentError ?? this.agentError,
+        agentsLoaded: agentsLoaded ?? this.agentsLoaded,
         selectedAgentId: selectedAgentId == _keep
             ? this.selectedAgentId
             : selectedAgentId as String?,
@@ -129,6 +138,7 @@ class SettingsState {
           agents == other.agents &&
           agentLoading == other.agentLoading &&
           agentError == other.agentError &&
+          agentsLoaded == other.agentsLoaded &&
           selectedAgentId == other.selectedAgentId;
 
   @override
@@ -144,6 +154,7 @@ class SettingsState {
         agents,
         agentLoading,
         agentError,
+        agentsLoaded,
         selectedAgentId,
       );
 }
@@ -259,7 +270,11 @@ class SettingsController extends Notifier<SettingsState> {
       if (!ref.mounted) {
         return;
       }
-      state = state.copyWith(agentLoading: false, agents: agents);
+      state = state.copyWith(
+        agentLoading: false,
+        agents: agents,
+        agentsLoaded: true,
+      );
     } on MistralApiException catch (e) {
       if (!ref.mounted) {
         return;

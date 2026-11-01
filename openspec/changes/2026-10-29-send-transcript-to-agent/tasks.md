@@ -37,6 +37,10 @@
 - [x] 6.2 Run `openspec validate 2026-10-29-send-transcript-to-agent --strict` and verify the change validates. (Verified: valid.)
 - [ ] 6.3 Physical-device run with the user's real key (pending user verification; this machine has no device): save a key, pick an agent in Settings, open a saved transcript, tap "Send to agent", and verify the reply appears with token usage, persists across an app restart, and is shared via the share sheet; verify a send with no agent selected points to Settings and a deleted agent produces a retryable error. Record the result in `spike-notes.md` before archiving.
 
+## 7. Device-testing fixes (2026-11-01)
+
+- [x] 7.1 Fix the empty-workspace loading loop found in device testing: with zero agents the list stays empty, so the auto-load guard never tripped — `SettingsState.agentsLoaded` now marks a successful load (even an empty one) and the screen guard uses it; the section shows the "No agents found in your workspace" note instead of a looping progress bar. Verify with `test/session/settings_controller_test.dart` (empty list marks loaded) and `test/app/settings_screen_test.dart` (empty list loads exactly once, note shown); analyze clean. (Verified: 43/43 in both files, analyze clean.)
+
 ## Workflow follow-up
 
 - Archive the change (`openspec archive 2026-10-29-send-transcript-to-agent --yes`) only after tests pass, the spike and device run are verified, and the change is reviewed.

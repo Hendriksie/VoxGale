@@ -284,7 +284,21 @@ void main() {
       expect(state().agents, agents);
       expect(state().agentLoading, isFalse);
       expect(state().hasAgentError, isFalse);
+      expect(state().agentsLoaded, isTrue);
       verify(() => agentClient.listAgents()).called(1);
+    });
+
+    test('an empty workspace is marked loaded (no re-load loop)', () async {
+      apiKeyStore.key = 'sk-secret';
+      when(() => agentClient.listAgents()).thenAnswer((_) async => const []);
+      controller();
+      await waitFor(() => state().loaded);
+
+      await controller().loadAgents();
+
+      expect(state().agents, isEmpty);
+      expect(state().agentsLoaded, isTrue);
+      expect(state().hasAgentError, isFalse);
     });
 
     test('a failed list load sets the error and keeps the previous '
