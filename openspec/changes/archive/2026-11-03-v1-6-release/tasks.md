@@ -25,10 +25,10 @@
 
 ## 3. Commit + archive
 
-- [ ] 3.1 Commit the release change (version bump, CHANGELOG section, this
+- [x] 3.1 Commit the release change (version bump, CHANGELOG section, this
   change's directory). Verify: `git log --oneline -1` shows the release
   commit and `git status --short` is clean.
-- [ ] 3.2 Archive the change (`openspec archive 2026-11-03-v1-6-release --yes`),
+- [x] 3.2 Archive the change (`openspec archive 2026-11-03-v1-6-release --yes`),
   then `openspec validate --specs --strict` (14/14) and `openspec list --json`
   shows no active changes. Verify: archive output + validate totals.
 
