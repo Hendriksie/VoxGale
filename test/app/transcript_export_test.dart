@@ -148,10 +148,14 @@ void main() {
       final content = await file.readAsString();
       expect(content, contains('# Transcript — 2026-10-26 14:32'));
       expect(content, contains('**Speaker 1** (0:00)'));
-      // The share sheet is invoked with the exported file.
+      // The share sheet is invoked with the export file AND the export text
+      // (EXTRA_TEXT on Android), labelled text/plain even for Markdown
+      // (change share-transcript-text-extra, design D1/D2).
       expect(shared, isNotNull);
       expect(shared!.files, hasLength(1));
       expect(shared!.files!.single.path, file.path);
+      expect(shared!.files!.single.mimeType, 'text/plain');
+      expect(shared!.text, content);
     });
 
     test('writes the plain-text export to a temp file and shares it',
@@ -182,6 +186,77 @@ void main() {
       final content = await file.readAsString();
       expect(content, contains('[0:00] Speaker 1: Hello there'));
       expect(shared!.files!.single.path, file.path);
+      expect(shared!.files!.single.mimeType, 'text/plain');
+      expect(shared!.text, content);
+    });
+
+    test('shares the file only when the export exceeds the size guard',
+        () async {
+      final big = StoredSegment(
+        sessionId: 'session-1',
+        order: 0,
+        text: 'x' * (maxShareTextExtraWireBytes ~/ 2 + 1),
+      );
+      final record = StoredSessionRecord(
+        session: session,
+        segments: [big],
+      );
+      ShareParams? shared;
+
+      await shareTranscriptExport(
+        record,
+        config,
+        markdown: false,
+        share: (params) async {
+          shared = params;
+          return ShareResult(
+            'dev.fluttercommunity.plus/share/unavailable',
+            ShareResultStatus.unavailable,
+          );
+        },
+      );
+
+      final file = File(
+        '${Directory.systemTemp.path}/voxtral-transcript-session-1.txt',
+      );
+      addTearDown(() async {
+        if (await file.exists()) await file.delete();
+      });
+      // The text extra would exceed 500 KB on the wire (UTF-16, 2 bytes per
+      // code unit), so it is omitted; the file is still shared (design D3).
+      expect(shared!.text, isNull);
+      expect(shared!.files, hasLength(1));
+      expect(shared!.files!.single.path, file.path);
+      expect(shared!.files!.single.mimeType, 'text/plain');
+      expect(await file.length(), greaterThan(maxShareTextExtraWireBytes ~/ 2));
+    });
+  });
+
+  group('shareAgentReply', () {
+    test('shares the reply text and file labelled text/plain', () async {
+      ShareParams? shared;
+
+      await shareAgentReply(
+        'Three action items.',
+        share: (params) async {
+          shared = params;
+          return ShareResult(
+            'dev.fluttercommunity.plus/share/unavailable',
+            ShareResultStatus.unavailable,
+          );
+        },
+      );
+
+      expect(shared, isNotNull);
+      expect(shared!.text, 'Three action items.');
+      expect(shared!.files, hasLength(1));
+      expect(shared!.files!.single.path, endsWith('.txt'));
+      expect(shared!.files!.single.mimeType, 'text/plain');
+      final file = File(shared!.files!.single.path);
+      addTearDown(() async {
+        if (await file.exists()) await file.delete();
+      });
+      expect(await file.readAsString(), 'Three action items.');
     });
   });
 }

@@ -97,7 +97,23 @@ historical v1 plan lives at [project-plan.md](project-plan.md).
   (b) open `https://chat.mistral.ai/work` alongside the exported transcript
   (paste manually); (c) ask Mistral for a Vibe chat API or prefill deep link.
   Open question: whether the Vibe mobile app accepts shared text into a new
-  chat.
+  chat. **Answered 2026-11-03 on device (Pixel 9 Pro XL / API 37,
+  `ai.mistral.chat` current Play build, change
+  `share-transcript-text-extra` smoke):** its `MainActivity` declares
+  `ACTION_SEND` + DEFAULT with types `text/*`, `image/*`, `application/*`
+  (plus `ACTION_SEND_MULTIPLE`, and VIEW deep links `lechat://*` and
+  `https://chat.mistral.ai/chat|work|code`), and it does resolve
+  `ACTION_SEND text/plain`. But the handler reads `EXTRA_TEXT` and prefills
+  the new-chat composer with only the **first whitespace-delimited token**
+  of it (verified: "ZZTEST full transcript body 12345" -> composer shows
+  "ZZTEST"; a no-space string is inserted in full; a stream-only share opens
+  the app with an empty composer — the reported bug). It never opens a chat
+  with the shared content, and `EXTRA_STREAM` is not surfaced as prefill.
+  Net: the Android share sheet into Vibe is **not** a usable
+  transcript-to-chat path; `lechat://` / `chat.mistral.ai/work` deep links
+  exist but no prefill parameter is documented. Remaining options unchanged:
+  manual paste, the Studio send-to-agent flow (conversations do not appear
+  in the Vibe app), or asking Mistral for a prefill deep link.
 
 ## Add yours
 

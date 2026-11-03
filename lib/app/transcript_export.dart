@@ -107,6 +107,26 @@ final agentReplyShareProvider = Provider<Future<void> Function(String reply)>(
   (ref) => shareAgentReply,
 );
 
+/// The share intent's text extra rides in the binder transaction, which is
+/// capped at ~1 MB and carries strings as UTF-16 (~2 bytes per code unit).
+/// An export whose text would exceed 500 KB on the wire is shared as the
+/// file only, so a very long transcript cannot make the whole share intent
+/// fail (change share-transcript-text-extra, design D3).
+const int maxShareTextExtraWireBytes = 500 * 1024;
+
+/// Builds the share params for an export: the export text itself (Android
+/// `EXTRA_TEXT`) plus the export file (`EXTRA_STREAM`), labelled
+/// `text/plain`, so text-consuming share targets (chat and note apps) receive
+/// the content as well as file-consuming targets. The file's MIME type is
+/// set explicitly — the Markdown export would otherwise go out as
+/// `text/markdown`, which text/plain-only targets do not match (design D2).
+/// The text extra is omitted when it would exceed
+/// [maxShareTextExtraWireBytes] on the wire (design D3).
+ShareParams shareParamsForExport(String content, XFile file) => ShareParams(
+  text: content.length * 2 <= maxShareTextExtraWireBytes ? content : null,
+  files: [XFile(file.path, mimeType: 'text/plain')],
+);
+
 /// Writes [reply] to a temp file and opens the system share sheet. The temp
 /// file goes to the system temp directory (on Android the app's cache dir),
 /// so no platform channel is needed; the share step is injectable for tests.
@@ -120,7 +140,7 @@ Future<void> shareAgentReply(
   );
   await file.writeAsString(reply);
   await (share ?? SharePlus.instance.share)(
-    ShareParams(files: [XFile(file.path)]),
+    shareParamsForExport(reply, XFile(file.path)),
   );
 }
 
@@ -145,6 +165,6 @@ Future<void> shareTranscriptExport(
   );
   await file.writeAsString(content);
   await (share ?? SharePlus.instance.share)(
-    ShareParams(files: [XFile(file.path)]),
+    shareParamsForExport(content, XFile(file.path)),
   );
 }

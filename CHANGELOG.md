@@ -13,6 +13,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   send, the app opens the saved transcript in History, where the agent's
   reply is shown.
 
+### Fixed
+
+- Sharing a transcript or agent reply now includes the text itself in the
+  share offer (Android `EXTRA_TEXT` alongside the file, labelled
+  `text/plain`), so chat-style share targets receive the content instead of
+  opening empty. Very large exports (text over 500 KB) are shared as the
+  file only, to stay under the share intent's size limit.
+
 ## [v1.5.0] - 2026-11-01
 
 ### Added
