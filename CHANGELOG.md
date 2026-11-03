@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v1.6.0] - 2026-11-03
+
 ### Added
 
 - After a live session, the home screen offers Share and Send to agent for
