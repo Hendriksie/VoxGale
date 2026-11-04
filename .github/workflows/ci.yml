@@ -21,6 +21,15 @@ env:
   FLUTTER_VERSION: '3.47.8'
 
 jobs:
+  # Defense in depth on top of the local pre-commit hook: the same scan over
+  # the full tracked tree, so a --no-verify commit still cannot merge.
+  secrets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Secret scan (full tracked tree)
+        run: bash scripts/check-secrets.sh --all
+
   test:
     # Pinned (not ubuntu-latest): the label migrates, and CI should not move
     # under us (same reasoning as release.yml).

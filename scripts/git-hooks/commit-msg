@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Commit-msg hard gate: blocks commit messages that contain secrets.
+# Installed together with the pre-commit hook via:
+#   git config core.hooksPath scripts/git-hooks
+set -u
+root="$(git rev-parse --show-toplevel)" || exit 1
+exec bash "$root/scripts/check-secrets.sh" --msg "$1"

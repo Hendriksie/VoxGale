@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pre-commit hard gate: blocks any commit that stages private data
+# (API keys, tokens, private keys) or files that must stay out of the repo
+# (.env, keystores, key.properties, SSH keys, ...).
+#
+# One-time setup after cloning:
+#   git config core.hooksPath scripts/git-hooks
+# (CI re-runs the same scan over the full tree: scripts/check-secrets.sh --all)
+set -u
+root="$(git rev-parse --show-toplevel)" || exit 1
+exec bash "$root/scripts/check-secrets.sh" --staged

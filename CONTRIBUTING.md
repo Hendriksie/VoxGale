@@ -38,3 +38,19 @@ JDK 17).
 - Never hardcode, log, or commit API keys.
 - Anything touching the microphone / foreground service needs a
   physical-device smoke test — emulators lie about background capture.
+
+## Secret scan (required before committing)
+
+This is a public repo — run the secret scan before every commit:
+
+1. One-time setup after cloning:
+   `git config core.hooksPath scripts/git-hooks`
+   The pre-commit hook then blocks any commit that stages secrets (API keys,
+   tokens, private keys — see `scripts/secret-patterns.txt`) or files that must
+   stay private (`.env`, `*.jks`/`*.keystore`, `key.properties`, SSH keys, …).
+   Never bypass it with `--no-verify`.
+2. CI re-runs the same scan over the whole tracked tree on every push/PR:
+   `bash scripts/check-secrets.sh --all`.
+3. If the scan blocks you: do not commit — rotate the credential first if it
+   was ever pushed, then remove it (`git rm --cached` + `.gitignore`) or mark
+   a false positive with `secret-scan-ignore` / `scripts/secret-scan-allowlist.txt`.
