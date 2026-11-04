@@ -1,28 +1,42 @@
 #!/usr/bin/env bash
-# check-secrets.sh — hard gate against committing private data to this public repo.
+# check-secrets.sh — hard gate against committing private data (public repos).
+#
+# Canonical copy lives globally at ~/.config/git/secret-scan/check-secrets.sh
+# and runs for every repo via the global hooks dir (~/.config/git/hooks,
+# core.hooksPath). A repo may commit its own copy under scripts/ — the hooks
+# prefer the global scanner, fall back to the repo copy, and CI in the repo
+# runs the repo copy directly.
 #
 # Modes:
 #   --staged (default)  scan the files staged for the next commit   -> pre-commit hook
 #   --all               scan every tracked file in the working tree  -> CI
+#   --msg <file>        scan a commit message file                   -> commit-msg hook
 #
 # Exit 0 = clean, exit 1 = blocked (hits printed as file:line plus remediation).
 #
+# Repo-local extensions (optional, per repo at its top level):
+#   scripts/secret-patterns.local.txt   extra ERE patterns, appended to the global set
+#   scripts/secret-scan-allowlist.txt   extra whole-file allowlist entries
+#
 # Overrides:
 #   - inline: put `secret-scan-ignore` on the flagged line
-#   - whole file: add the exact repo-relative path to scripts/secret-scan-allowlist.txt
-#   - patterns: extend scripts/secret-patterns.txt; false positives go in
-#     scripts/secret-scan-exclusions.txt
+#   - whole file: global scripts/secret-scan-allowlist.txt or repo-local one
+#   - patterns: extend secret-patterns.txt (+ .local.txt per repo); false
+#     positives go in secret-scan-exclusions.txt
 #
 # Never bypass the pre-commit hook with `git commit --no-verify` unless the
 # user explicitly instructs it — and if a secret was already pushed, rotate it
 # first; removing it from a later commit does not un-leak it.
 set -u
-cd "$(git rev-parse --show-toplevel)" || { echo "check-secrets: not a git repo" >&2; exit 1; }
+ROOT="$(git rev-parse --show-toplevel)" || { echo "check-secrets: not a git work tree" >&2; exit 0; }
+cd "$ROOT"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATTERNS="$SCRIPT_DIR/secret-patterns.txt"
 EXCLUSIONS="$SCRIPT_DIR/secret-scan-exclusions.txt"
 ALLOWLIST="$SCRIPT_DIR/secret-scan-allowlist.txt"
+LOCAL_PATTERNS="$ROOT/scripts/secret-patterns.local.txt"
+LOCAL_ALLOWLIST="$ROOT/scripts/secret-scan-allowlist.txt"
 
 # grep -f treats every line as a pattern (comments included), so strip
 # comment/blank lines into temp files first.
@@ -30,6 +44,10 @@ PAT_TMP="$(mktemp)"; EXC_TMP="$(mktemp)"
 trap 'rm -f "$PAT_TMP" "$EXC_TMP"' EXIT
 grep -v '^[[:space:]]*#' "$PATTERNS" | grep -v '^[[:space:]]*$' > "$PAT_TMP"
 grep -v '^[[:space:]]*#' "$EXCLUSIONS" | grep -v '^[[:space:]]*$' > "$EXC_TMP"
+# Repo-local extra patterns are appended to the global set.
+if [ -f "$LOCAL_PATTERNS" ]; then
+  grep -v '^[[:space:]]*#' "$LOCAL_PATTERNS" | grep -v '^[[:space:]]*$' >> "$PAT_TMP"
+fi
 
 MODE="${1:---staged}"
 MSG_FILE=""
@@ -44,7 +62,9 @@ HITS=0
 report() { echo "  $1"; HITS=$((HITS + 1)); }
 
 allowlisted() {
-  [ -f "$ALLOWLIST" ] && grep -qxF -- "$1" "$ALLOWLIST"
+  [ -f "$ALLOWLIST" ] && grep -qxF -- "$1" "$ALLOWLIST" && return 0
+  [ -f "$LOCAL_ALLOWLIST" ] && grep -qxF -- "$1" "$LOCAL_ALLOWLIST" && return 0
+  return 1
 }
 
 # Filename blocklist: files that must never be tracked, whatever their content.
@@ -79,7 +99,7 @@ report_hits() {  # $1 = label prefix (may be empty), $2 = newline-separated raw 
   done <<< "$raw"
 }
 
-echo "secret-scan ($MODE): scanning ..."
+echo "secret-scan ($MODE, repo: $ROOT): scanning ..."
 
 if [ "$MODE" = "--msg" ]; then
   raw=$(grep -inE -f "$PAT_TMP" -- "$MSG_FILE" 2>/dev/null | filter_hits || true)

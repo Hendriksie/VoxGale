@@ -43,12 +43,16 @@ JDK 17).
 
 This is a public repo — run the secret scan before every commit:
 
-1. One-time setup after cloning:
+1. One-time setup after cloning (unless your machine already has the global
+   gate at `~/.config/git/hooks` via the global `core.hooksPath`, which covers
+   every repo):
    `git config core.hooksPath scripts/git-hooks`
    The pre-commit hook then blocks any commit that stages secrets (API keys,
    tokens, private keys — see `scripts/secret-patterns.txt`) or files that must
    stay private (`.env`, `*.jks`/`*.keystore`, `key.properties`, SSH keys, …).
    Never bypass it with `--no-verify`.
+   Repo-local extras: `scripts/secret-patterns.local.txt` (extra patterns) and
+   `scripts/secret-scan-allowlist.txt` (extra whole-file allowlist).
 2. CI re-runs the same scan over the whole tracked tree on every push/PR:
    `bash scripts/check-secrets.sh --all`.
 3. If the scan blocks you: do not commit — rotate the credential first if it
