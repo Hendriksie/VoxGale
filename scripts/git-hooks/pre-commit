@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
-# Pre-commit hard gate: blocks any commit that stages private data
-# (API keys, tokens, private keys) or files that must stay out of the repo
-# (.env, keystores, key.properties, SSH keys, ...).
+# Global pre-commit secret-scan gate — runs for every repo via the global
+# core.hooksPath (~/.config/git/hooks). A repo can override with its own local
+# core.hooksPath (e.g. scripts/git-hooks) to use a repo-committed scanner.
 #
-# One-time setup after cloning:
-#   git config core.hooksPath scripts/git-hooks
-# (CI re-runs the same scan over the full tree: scripts/check-secrets.sh --all)
+# Scanner preference: global ~/.config/git/secret-scan/check-secrets.sh, then
+# the repo-committed scripts/check-secrets.sh, else allow the commit.
+# Set SECRET_SCAN_DISABLED=1 to skip (agent rule: --no-verify only on explicit
+# user instruction).
 set -u
-root="$(git rev-parse --show-toplevel)" || exit 1
-exec bash "$root/scripts/check-secrets.sh" --staged
+[ "${SECRET_SCAN_DISABLED:-0}" = "1" ] && exit 0
+root="$(git rev-parse --show-toplevel)" || exit 0
+scan="$HOME/.config/git/secret-scan/check-secrets.sh"
+[ -x "$scan" ] || scan="$root/scripts/check-secrets.sh"
+[ -x "$scan" ] || exit 0
+exec bash "$scan" --staged

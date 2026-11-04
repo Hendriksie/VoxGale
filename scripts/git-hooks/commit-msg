@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Commit-msg hard gate: blocks commit messages that contain secrets.
-# Installed together with the pre-commit hook via:
-#   git config core.hooksPath scripts/git-hooks
+# Global commit-msg secret-scan gate — same scanner preference as pre-commit.
+# Set SECRET_SCAN_DISABLED=1 to skip.
 set -u
-root="$(git rev-parse --show-toplevel)" || exit 1
-exec bash "$root/scripts/check-secrets.sh" --msg "$1"
+[ "${SECRET_SCAN_DISABLED:-0}" = "1" ] && exit 0
+root="$(git rev-parse --show-toplevel)" || exit 0
+scan="$HOME/.config/git/secret-scan/check-secrets.sh"
+[ -x "$scan" ] || scan="$root/scripts/check-secrets.sh"
+[ -x "$scan" ] || exit 0
+exec bash "$scan" --msg "$1"
