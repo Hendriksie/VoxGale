@@ -82,7 +82,7 @@ dev_dependencies:
   # build (<5.0.0) constraint.
   build_runner: ^2.16.2
   # Drift's code generator (latest 2.35.x; drift itself is on 2.35.2).
-  drift_dev: ^2.35.1
+  drift_dev: ^2.35.3
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
