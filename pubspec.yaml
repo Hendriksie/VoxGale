@@ -40,7 +40,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   dio: ^5.11.1
   flutter_secure_storage: ^11.2.0
-  drift: ^2.35.2
+  drift: ^2.35.4
   # Flutter bindings for the Drift store chosen in Phase 0: opens the SQLite
   # database in the app's documents directory with the platform glue.
   drift_flutter: ^0.3.1
