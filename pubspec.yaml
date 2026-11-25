@@ -49,7 +49,7 @@ dependencies:
   path_provider: ^2.1.6
   # System file picker to import an audio file from device storage; no
   # existing dependency provides it.
-  file_picker: ^13.3.0
+  file_picker: ^13.4.1
   # System share sheet to export transcripts to text/Markdown; the share
   # channel needs a plugin.
   share_plus: ^13.3.1
